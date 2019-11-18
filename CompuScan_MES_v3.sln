@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29411.108
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CompuScan_MES_Main", "CompuScan_MES_Main\CompuScan_MES_Main.csproj", "{D0EEA744-78D0-4BCB-9746-465646C3C2F1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CompuScan_MES_Client", "CompuScan_MES_Client\CompuScan_MES_Client.csproj", "{68F06617-E449-4D53-A675-B19A42AAEA63}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D0EEA744-78D0-4BCB-9746-465646C3C2F1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0EEA744-78D0-4BCB-9746-465646C3C2F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0EEA744-78D0-4BCB-9746-465646C3C2F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0EEA744-78D0-4BCB-9746-465646C3C2F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{68F06617-E449-4D53-A675-B19A42AAEA63}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{68F06617-E449-4D53-A675-B19A42AAEA63}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{68F06617-E449-4D53-A675-B19A42AAEA63}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{68F06617-E449-4D53-A675-B19A42AAEA63}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DEA3FF44-E7F0-4F69-957D-2369295917FB}
+	EndGlobalSection
+EndGlobal
