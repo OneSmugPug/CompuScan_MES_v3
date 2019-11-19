@@ -21,30 +21,19 @@ namespace CompuScan_MES_Client
         private static byte[] rfidReadBuffer = new byte[54];
         private static byte[] userWriteBuffer = new byte[106]; //use this to write access level to plc
         private static byte[] stepReadBuffer = new byte[8];
-        public static byte[] readBuffer = new byte[296];
-        public static byte[] writeBuffer = new byte[296];
+        
         public static byte[] echoReadBuffer = new byte[24];
         public static byte[] echoWriteBuffer = new byte[2];
         
         private bool hasReadRFID = false;
         private bool isConnected = false;
         private bool isReading = true;
-        private bool hasReadOne = false;
+        
         private bool changeScreen = false;
         private DataTable dt;
         private Form curForm;
         public string rfidCode { get; set; }
-        public string lineID { get; set; }
-        public string identifier { get; set; }
-        public int identifierCount { get; set; }
-        public int readTransactionID { get; set; }
-        public int writeTransactionID { get; set; }
-        public int channelStatus { get; set; }
-        public int stationStatus { get; set; }
-        public int errorCode { get; set; }
-        public string userName { get; set; }
-        public int equipmentID { get; set; }
-        public string productionData { get; set; }
+        
         public int heartBeat { get; set; }
         public int stationNum { get; set; }
         public int stepNum { get; set; }
@@ -61,15 +50,15 @@ namespace CompuScan_MES_Client
         {
             EstablishConnection();
 
-            main_Panel.Controls.Clear();
-            AwaitPart frmAwait = new AwaitPart(31);
-            //frmAwait.SetS7Client(client);
-            curForm = frmAwait;
-            curForm.TopLevel = false;
-            curForm.TopMost = true;
-            curForm.Dock = DockStyle.Fill;
-            main_Panel.Controls.Add(curForm);
-            curForm.Show();
+            //main_Panel.Controls.Clear();
+            //AwaitPart frmAwait = new AwaitPart(31);
+            ////frmAwait.SetS7Client(client);
+            //curForm = frmAwait;
+            //curForm.TopLevel = false;
+            //curForm.TopMost = true;
+            //curForm.Dock = DockStyle.Fill;
+            //main_Panel.Controls.Add(curForm);
+            //curForm.Show();
 
             if (isConnected)
             {
@@ -132,7 +121,7 @@ namespace CompuScan_MES_Client
                                 {
                                     main_Panel.Controls.Clear();
                                     AwaitPart frmAwait = new AwaitPart(stationNum);
-                                    //frmAwait.SetS7Client(client);
+                                    frmAwait.SetS7Client(sequenceClient);
                                     curForm = frmAwait;
                                     curForm.TopLevel = false;
                                     curForm.TopMost = true;
@@ -192,163 +181,8 @@ namespace CompuScan_MES_Client
                 }
                 Thread.Sleep(10);
             }
-
-            //while (isConnected)
-            //{
-            //    //Echo(); // This is the heart beat
-            //    ReadAllValues();
-            //    switch (readTransactionID)
-            //    {
-            //        case 1:
-            //            if (!hasReadOne)
-            //            {
-            //                DoWork(productionData);
-            //                //WriteToSQLDataBase();
-            //                Console.WriteLine("Got Transaction ID: " + readTransactionID + ". Writing to database and sending a transaction ID of " + (readTransactionID + 1) + "back to PLC.");
-            //                writeTransactionID = readTransactionID + 1;
-            //                //WriteBackToPLC();
-            //                hasReadOne = true;
-            //            }
-            //            break;
-            //        case 3:
-            //        case 5:
-            //        case 7:
-            //        case 9:
-            //        case 11:
-            //        case 13:
-            //        case 15:
-            //        case 17:
-            //        case 19:
-            //        case 21:
-            //        case 23:
-            //        case 25:
-            //        case 27:
-            //        case 29:
-            //        case 31:
-            //        case 33:
-            //        case 35:
-            //            if (hasReadOne)
-            //            {
-            //                DoWork(productionData);
-            //                //WriteToSQLDataBase();
-            //                Console.WriteLine("Got Transaction ID: " + readTransactionID + ". Writing to database and sending a transaction ID of " + (readTransactionID + 1) + "back to PLC.");
-            //                writeTransactionID = readTransactionID + 1;
-            //                //WriteBackToPLC();
-            //            }
-            //            break;
-            //        case 99:
-            //            Console.WriteLine("PLC Requested to stop communication... Sending final transaction to PLC.");
-            //            writeTransactionID = 100;
-            //            WriteBackToPLC();
-            //            hasReadOne = false;
-            //            break;
-            //        default:
-            //            break;
-            //    }
-            //    Thread.Sleep(500);
-            //}
         }
-
-        private void ReadAllValues()
-        {
-            //client.DBRead(3002, 0, stepReadBuffer.Length, stepReadBuffer);
-
-            changeScreen = S7.GetBitAt(rfidReadBuffer, 0, 0);
-            stationNum = S7.GetIntAt(stepReadBuffer, 2);
-            stepNum = S7.GetIntAt(stepReadBuffer, 4);
-            stepData = S7.GetIntAt(stepReadBuffer, 6);
-
-            //client.DBRead(3000, 0, readBuffer.Length, readBuffer);//1110
-
-            //lineID = S7.GetStringAt(readBuffer, 0);
-
-            //identifier = S7.GetStringAt(readBuffer, 22);
-
-            //identifierCount = S7.GetByteAt(readBuffer, 44); // Number of entries in the database (Does not really need to read but write it to plc?)
-
-            //readTransactionID = S7.GetByteAt(readBuffer, 45);
-
-            //channelStatus = S7.GetByteAt(readBuffer, 46);
-
-            //stationStatus = S7.GetByteAt(readBuffer, 47);
-
-            //errorCode = S7.GetByteAt(readBuffer, 48);
-
-            //userName = S7.GetStringAt(readBuffer, 50);
-
-            //equipmentID = S7.GetByteAt(readBuffer, 94);
-
-            //productionData = S7.GetStringAt(readBuffer, 96);
-        }
-
-        //private void DoWork(string work)
-        //{
-        //    switch (work)
-        //    {
-        //        case "a":
-        //            this.Invoke((MethodInvoker)delegate
-        //            {
-        //                main_Panel.Controls.Clear();
-        //                Scan frmScan = new Scan(stationNum);
-        //                //frmScan.SetPLCThread(plc_Threads);
-        //                curForm = frmScan;
-        //                curForm.TopLevel = false;
-        //                curForm.TopMost = true;
-        //                curForm.Dock = DockStyle.Fill;
-        //                main_Panel.Controls.Add(curForm);
-        //                curForm.Show();
-        //            });
-        //            break;
-        //        case "b":
-        //            this.Invoke((MethodInvoker)delegate
-        //            {
-        //                main_Panel.Controls.Clear();
-        //                Pick frmPick = new Pick(5, stationNum);
-        //                //frmScan.SetPLCThread(plc_Threads);
-        //                curForm = frmPick;
-        //                curForm.TopLevel = false;
-        //                curForm.TopMost = true;
-        //                curForm.Dock = DockStyle.Fill;
-        //                main_Panel.Controls.Add(curForm);
-        //                curForm.Show();
-        //            });
-        //            break;
-        //        case "c":
-        //            this.Invoke((MethodInvoker)delegate
-        //            {
-        //                main_Panel.Controls.Clear();
-        //                Bolt frmBolt = new Bolt(5, stationNum);
-        //                //frmScan.SetPLCThread(plc_Threads);
-        //                curForm = frmBolt;
-        //                curForm.TopLevel = false;
-        //                curForm.TopMost = true;
-        //                curForm.Dock = DockStyle.Fill;
-        //                main_Panel.Controls.Add(curForm);
-        //                curForm.Show();
-        //            });
-        //            break;
-        //        default:
-        //            break;
-        //    }
-        //}
-        public void WriteBackToPLC()
-        {
-            S7.SetStringAt(writeBuffer, 0, 20, lineID);
-            S7.SetStringAt(writeBuffer, 22, 20, identifier);
-            S7.SetByteAt(writeBuffer, 44, (byte)identifierCount);
-            S7.SetByteAt(writeBuffer, 45, (byte)writeTransactionID);
-            S7.SetByteAt(writeBuffer, 46, (byte)channelStatus);
-            S7.SetByteAt(writeBuffer, 47, (byte)stationStatus);
-            S7.SetByteAt(writeBuffer, 48, (byte)errorCode);
-            S7.SetStringAt(writeBuffer, 50, 20, userName);
-            S7.SetByteAt(writeBuffer, 94, (byte)equipmentID);
-            S7.SetStringAt(writeBuffer, 96, 20, productionData);
-            //int writeResult = client.DBWrite(3001, 0, writeBuffer.Length, writeBuffer);//1111
-            //if (writeResult == 0)
-            //{
-            //    Console.WriteLine("==> Successfully wrote to PLC");
-            //}
-        }
+        
         #endregion
 
         #region [Heart Beat]
@@ -397,7 +231,6 @@ namespace CompuScan_MES_Client
                                 short temp2 = short.Parse(txt_MP_AccessLvl.Text);
                                 S7.SetIntAt(userWriteBuffer, 104, temp2);
                                 int writeResult = usersClient.DBWrite(3004, 0, userWriteBuffer.Length, userWriteBuffer);
-                                Console.WriteLine(writeResult);
                                 if (writeResult == 0)
                                 {
                                     Console.WriteLine("==> Successfully wrote to PLC");

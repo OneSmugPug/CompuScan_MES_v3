@@ -77,6 +77,8 @@
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "AwaitPart";
             this.Text = "AwaitPart";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.AwaitPart_FormClosing);
+            this.Load += new System.EventHandler(this.AwaitPart_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 

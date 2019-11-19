@@ -20,3 +20,4 @@ namespace CompuScan_MES_Client
         }
     }
 }
+
