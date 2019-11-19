@@ -1,4 +1,5 @@
-﻿using System;
+﻿using CompuScan_MES_Client.Properties;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -8,11 +9,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Sharp7;
 
 namespace CompuScan_MES_Client
 {
     public partial class Bolt : Form
     {
+        private S7Client client;
         private int curBoltNum = 0;
         private int picBoxY = 12;
         private int picBoxX = 12;
@@ -32,7 +35,7 @@ namespace CompuScan_MES_Client
             for (int i = 0; i < boltNum; i++)
             {
                 PictureBox picBox = new PictureBox();
-                picBox.Image = Image.FromFile("C:\\Users\\dawid\\source\\repos\\CompuScan_MES_v2\\CompuScan_MES\\CompuScan_MES_Client\\Resources\\empty_bolt_image.png");
+                picBox.Image = (Image)Resources.ResourceManager.GetObject("empty_bolt_image");
                 picBox.Location = new Point(picBoxX, picBoxY);
                 picBox.Size = new Size(75, 75);
                 picBox.SizeMode = PictureBoxSizeMode.StretchImage;
@@ -45,6 +48,11 @@ namespace CompuScan_MES_Client
 
                 this.Controls.Add(picBox);
             }
+        }
+
+        public void SetS7Client(S7Client client)
+        {
+            this.client = client;
         }
     }
 }

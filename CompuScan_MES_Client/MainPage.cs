@@ -16,9 +16,10 @@ namespace CompuScan_MES_Client
     public partial class MainPage : Form
     {
         #region [Objects and Variables]
-        private S7Client client = new S7Client();
+        private S7Client usersClient = new S7Client();
+        private S7Client sequenceClient = new S7Client();
         private static byte[] rfidReadBuffer = new byte[54];
-        private static byte[] userWriteBuffer = new byte[108]; //use this to write access level to plc
+        private static byte[] userWriteBuffer = new byte[106]; //use this to write access level to plc
         private static byte[] stepReadBuffer = new byte[8];
         public static byte[] readBuffer = new byte[296];
         public static byte[] writeBuffer = new byte[296];
@@ -27,6 +28,7 @@ namespace CompuScan_MES_Client
         
         private bool hasReadRFID = false;
         private bool isConnected = false;
+        private bool isReading = true;
         private bool hasReadOne = false;
         private bool changeScreen = false;
         private DataTable dt;
@@ -60,26 +62,26 @@ namespace CompuScan_MES_Client
             EstablishConnection();
 
             main_Panel.Controls.Clear();
-            Scan frmScan = new Scan(31);
-            //frmScan.SetPLCThread(plc_Threads);
-            curForm = frmScan;
+            AwaitPart frmAwait = new AwaitPart(31);
+            //frmAwait.SetS7Client(client);
+            curForm = frmAwait;
             curForm.TopLevel = false;
             curForm.TopMost = true;
             curForm.Dock = DockStyle.Fill;
             main_Panel.Controls.Add(curForm);
             curForm.Show();
 
-            //if (isConnected)
-            //{
-            //    Thread sequenceThread = new Thread(new ThreadStart(StartSequence));
-            //    sequenceThread.Start();
-            //    //Thread rfidThread = new Thread(new ThreadStart(ReadRFID));
-            //    //rfidThread.Start();
-            //}
-            //else
-            //{
-            //    MessageBox.Show("No Connection to the plc", "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            //}
+            if (isConnected)
+            {
+                Thread rfidThread = new Thread(new ThreadStart(ReadRFID));
+                rfidThread.Start();
+                Thread sequenceThread = new Thread(new ThreadStart(StartSequence));
+                sequenceThread.Start();
+            }
+            else
+            {
+                MessageBox.Show("No Connection to the plc", "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
         #endregion
 
@@ -88,9 +90,10 @@ namespace CompuScan_MES_Client
         {
             if (!isConnected)
             {
-                int connectionResult = client.ConnectTo("192.168.1.1", 0, 1);
+                int connectionResult1 = sequenceClient.ConnectTo("192.168.1.1", 0, 1);
+                int connectionResult2 = usersClient.ConnectTo("192.168.1.1", 0, 1);
 
-                if (connectionResult == 0)
+                if (connectionResult1 == 0 && connectionResult2 == 0)
                 {
                     Console.WriteLine("=========Connection success===========");
                     isConnected = true;
@@ -99,7 +102,8 @@ namespace CompuScan_MES_Client
                 {
                     Console.WriteLine("=========Connection error============");
                     isConnected = false;
-                    Console.WriteLine(connectionResult);
+                    Console.WriteLine(connectionResult1);
+                    Console.WriteLine(connectionResult2);
                     return;
 
                 }
@@ -112,7 +116,7 @@ namespace CompuScan_MES_Client
         {
             while (isConnected)
             {
-                client.DBRead(3002, 0, stepReadBuffer.Length, stepReadBuffer);
+                sequenceClient.DBRead(3002, 0, stepReadBuffer.Length, stepReadBuffer);
                 changeScreen = S7.GetBitAt(stepReadBuffer, 0, 0);
                 //Console.WriteLine(changeScreen);
                 if (changeScreen)
@@ -128,7 +132,7 @@ namespace CompuScan_MES_Client
                                 {
                                     main_Panel.Controls.Clear();
                                     AwaitPart frmAwait = new AwaitPart(stationNum);
-                                    //frmScan.SetPLCThread(plc_Threads);
+                                    //frmAwait.SetS7Client(client);
                                     curForm = frmAwait;
                                     curForm.TopLevel = false;
                                     curForm.TopMost = true;
@@ -143,7 +147,7 @@ namespace CompuScan_MES_Client
                                 {
                                     main_Panel.Controls.Clear();
                                     Scan frmScan = new Scan(stationNum);
-                                    //frmScan.SetPLCThread(plc_Threads);
+                                    frmScan.SetS7Client(sequenceClient);
                                     curForm = frmScan;
                                     curForm.TopLevel = false;
                                     curForm.TopMost = true;
@@ -158,7 +162,7 @@ namespace CompuScan_MES_Client
                                 {
                                     main_Panel.Controls.Clear();
                                     Pick frmPick = new Pick(stepData,stationNum);
-                                    //frmScan.SetPLCThread(plc_Threads);
+                                    frmPick.SetS7Client(sequenceClient);
                                     curForm = frmPick;
                                     curForm.TopLevel = false;
                                     curForm.TopMost = true;
@@ -173,7 +177,7 @@ namespace CompuScan_MES_Client
                                 {
                                     main_Panel.Controls.Clear();
                                     Bolt frmBolt = new Bolt(stepData, stationNum);
-                                    //frmScan.SetPLCThread(plc_Threads);
+                                    frmBolt.SetS7Client(sequenceClient);
                                     curForm = frmBolt;
                                     curForm.TopLevel = false;
                                     curForm.TopMost = true;
@@ -186,7 +190,7 @@ namespace CompuScan_MES_Client
                             break;
                     }
                 }
-                Thread.Sleep(20);
+                Thread.Sleep(10);
             }
 
             //while (isConnected)
@@ -247,7 +251,7 @@ namespace CompuScan_MES_Client
 
         private void ReadAllValues()
         {
-            client.DBRead(3002, 0, stepReadBuffer.Length, stepReadBuffer);
+            //client.DBRead(3002, 0, stepReadBuffer.Length, stepReadBuffer);
 
             changeScreen = S7.GetBitAt(rfidReadBuffer, 0, 0);
             stationNum = S7.GetIntAt(stepReadBuffer, 2);
@@ -339,30 +343,30 @@ namespace CompuScan_MES_Client
             S7.SetStringAt(writeBuffer, 50, 20, userName);
             S7.SetByteAt(writeBuffer, 94, (byte)equipmentID);
             S7.SetStringAt(writeBuffer, 96, 20, productionData);
-            int writeResult = client.DBWrite(3001, 0, writeBuffer.Length, writeBuffer);//1111
-            if (writeResult == 0)
-            {
-                Console.WriteLine("==> Successfully wrote to PLC");
-            }
+            //int writeResult = client.DBWrite(3001, 0, writeBuffer.Length, writeBuffer);//1111
+            //if (writeResult == 0)
+            //{
+            //    Console.WriteLine("==> Successfully wrote to PLC");
+            //}
         }
         #endregion
 
         #region [Heart Beat]
         public void Echo()
         {
-            client.DBRead(1021, 0, echoReadBuffer.Length, echoReadBuffer);
-            heartBeat = S7.GetIntAt(echoReadBuffer, 0);
-            S7.SetIntAt(echoWriteBuffer, 0, (short)heartBeat);
-            int writeResult = client.DBWrite(1022, 0, echoWriteBuffer.Length, echoWriteBuffer);
+            //client.DBRead(1021, 0, echoReadBuffer.Length, echoReadBuffer);
+            //heartBeat = S7.GetIntAt(echoReadBuffer, 0);
+            //S7.SetIntAt(echoWriteBuffer, 0, (short)heartBeat);
+            //int writeResult = client.DBWrite(1022, 0, echoWriteBuffer.Length, echoWriteBuffer);
         }
         #endregion
 
         #region [Read RFID / LogIn User]
         private void ReadRFID()
         {
-            while (!hasReadRFID)
+            while (isReading)
             {
-                int dbread = client.DBRead(3003, 0, rfidReadBuffer.Length, rfidReadBuffer);
+                int dbread = usersClient.DBRead(3003, 0, rfidReadBuffer.Length, rfidReadBuffer);
                 hasReadRFID = S7.GetBitAt(rfidReadBuffer, 0, 0);
                 if (hasReadRFID)
                 {
@@ -389,8 +393,11 @@ namespace CompuScan_MES_Client
                                 //only access level?
                                 S7.SetStringAt(userWriteBuffer, 0, 50, tempStr);
                                 S7.SetStringAt(userWriteBuffer, 52, 50, txt_MP_UserName.Text.ToString());
-                                S7.SetStringAt(userWriteBuffer, 104, 1, txt_MP_AccessLvl.Text.ToString());
-                                int writeResult = client.DBWrite(3004, 0, userWriteBuffer.Length, userWriteBuffer);
+                                int temp1 = Int32.Parse(txt_MP_AccessLvl.Text);
+                                short temp2 = short.Parse(txt_MP_AccessLvl.Text);
+                                S7.SetIntAt(userWriteBuffer, 104, temp2);
+                                int writeResult = usersClient.DBWrite(3004, 0, userWriteBuffer.Length, userWriteBuffer);
+                                Console.WriteLine(writeResult);
                                 if (writeResult == 0)
                                 {
                                     Console.WriteLine("==> Successfully wrote to PLC");
@@ -399,7 +406,7 @@ namespace CompuScan_MES_Client
                         }
                     });
                     
-                    //hasReadRFID = false; // creates unlimited rfid reading
+                    hasReadRFID = false; // creates unlimited rfid reading
                 }
                 Thread.Sleep(20);
             }
@@ -408,8 +415,10 @@ namespace CompuScan_MES_Client
 
         private void MainPage_FormClosing(object sender, FormClosingEventArgs e)
         {
-            client.Disconnect();
+            usersClient.Disconnect();
+            sequenceClient.Disconnect();
             isConnected = false;
+            isReading = false;
         }
     }
 }

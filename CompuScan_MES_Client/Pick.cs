@@ -7,11 +7,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Sharp7;
 
 namespace CompuScan_MES_Client
 {
     public partial class Pick : Form
     {
+        private S7Client client;
         private int curPickNum = 0;
         public Pick(int pickNum, int stationNum)
         {
@@ -19,6 +21,11 @@ namespace CompuScan_MES_Client
             current_pick.Text = curPickNum.ToString();
             total_pick.Text = pickNum.ToString();
             txt_station_num.Text = stationNum.ToString();
+        }
+
+        public void SetS7Client(S7Client client)
+        {
+            this.client = client;
         }
     }
 }
