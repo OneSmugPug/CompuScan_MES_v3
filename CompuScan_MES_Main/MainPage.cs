@@ -15,15 +15,17 @@ namespace CompuScan_MES_Main
     public partial class MainPage : Form
     {
         #region [Objects and Variables]
-        private PLC_Threads plc_Threads = new PLC_Threads();
+        private PLC_Threads threadUtil = new PLC_Threads();
         public string rfidCode { get; set; }
         private DataTable dt;
-        private bool btnMainOverviewDown = false;
-        private bool btnUserDown = false;
-        private bool btnReportsDown = false;
-        private bool btnLogInDown = false;
+        private bool
+            btnMainOverviewDown = false,
+            btnUserDown = false,
+            btnReportsDown = false,
+            btnLogInDown = false,
+            btnVarManDown = false,
+            userLoggedIn = false;
         public Form curForm;
-        private bool userLoggedIn = false;
         #endregion
 
         public MainPage()
@@ -34,11 +36,11 @@ namespace CompuScan_MES_Main
         #region [Load Method]
         private void MainPage_Load(object sender, EventArgs e)
         {
-            plc_Threads.EstablishConnection();
-            if (plc_Threads.isConnected)
+            threadUtil.EstablishConnection();
+            if (threadUtil.isConnected)
             {
                 Console.WriteLine("CONNECTED");
-                Thread conThread = new Thread(new ThreadStart(plc_Threads.Main_PLC_Interaction));
+                Thread conThread = new Thread(new ThreadStart(threadUtil.Main_PLC_Interaction));
                 //conThread.Start();
                 //lbl_MP_PLCStatus.Text = "Online";
                 //lbl_MP_PLCStatus.ForeColor = Color.Green;
@@ -95,7 +97,7 @@ namespace CompuScan_MES_Main
         {
             main_Panel.Controls.Clear();
             UserManagement frmUserMan = new UserManagement();
-            frmUserMan.SetPLCThread(plc_Threads);
+            frmUserMan.SetPLCThread(threadUtil);
             curForm = frmUserMan;
             curForm.TopLevel = false;
             curForm.TopMost = true;
@@ -176,10 +178,57 @@ namespace CompuScan_MES_Main
         }
         #endregion
 
+        #region [Variant Manager Button]
+        private void Btn_MP_VM_Click(object sender, EventArgs e)
+        {
+            main_Panel.Controls.Clear();
+            VariantManager frmVM = new VariantManager();
+            frmVM.SetPLCThread(threadUtil);
+            curForm = frmVM;
+            curForm.TopLevel = false;
+            curForm.TopMost = true;
+            curForm.Dock = DockStyle.Fill;
+            main_Panel.Controls.Add(curForm);
+            curForm.Show();
+        }
+
+        private void Btn_MP_VM_MouseDown(object sender, MouseEventArgs e)
+        {
+            btnVarManDown = true;
+            (sender as Button).Invalidate();
+        }
+
+        private void Btn_MP_VM_MouseUp(object sender, MouseEventArgs e)
+        {
+            btnVarManDown = false;
+            (sender as Button).Invalidate();
+        }
+
+        private void Btn_MP_VM_Paint(object sender, PaintEventArgs e)
+        {
+            if (btnVarManDown == false)
+            {
+                ControlPaint.DrawBorder(e.Graphics, (sender as Button).ClientRectangle,
+                    SystemColors.ControlLightLight, 2, ButtonBorderStyle.Outset,
+                    SystemColors.ControlLightLight, 2, ButtonBorderStyle.Outset,
+                    SystemColors.ControlLightLight, 2, ButtonBorderStyle.Outset,
+                    SystemColors.ControlLightLight, 2, ButtonBorderStyle.Outset);
+            }
+            else
+            {
+                ControlPaint.DrawBorder(e.Graphics, (sender as Button).ClientRectangle,
+                    SystemColors.ControlLightLight, 2, ButtonBorderStyle.Inset,
+                    SystemColors.ControlLightLight, 2, ButtonBorderStyle.Inset,
+                    SystemColors.ControlLightLight, 2, ButtonBorderStyle.Inset,
+                    SystemColors.ControlLightLight, 2, ButtonBorderStyle.Inset);
+            }
+        }
+        #endregion
+
         #region [On Form Close]
         private void MainPage_FormClosing(object sender, FormClosingEventArgs e)
         {
-            plc_Threads.DisconnectFromPLC();
+            threadUtil.DisconnectFromPLC();
         }
         #endregion
 
@@ -291,7 +340,7 @@ namespace CompuScan_MES_Main
         #region [Getters & Setters]
         public PLC_Threads GetPLC_Threads()
         {
-            return plc_Threads;
+            return threadUtil;
         }
         #endregion
     }

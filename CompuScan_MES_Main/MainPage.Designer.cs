@@ -53,6 +53,7 @@
             this.bunifuSeparator1 = new Bunifu.Framework.UI.BunifuSeparator();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.panel2 = new System.Windows.Forms.Panel();
+            this.btn_MP_VM = new System.Windows.Forms.Button();
             this.btn_MP_Reports = new System.Windows.Forms.Button();
             this.btn_MP_UserManagement = new System.Windows.Forms.Button();
             this.btn_MP_MainOverview = new System.Windows.Forms.Button();
@@ -369,6 +370,7 @@
             // panel2
             // 
             this.panel2.BackColor = System.Drawing.Color.Silver;
+            this.panel2.Controls.Add(this.btn_MP_VM);
             this.panel2.Controls.Add(this.btn_MP_Reports);
             this.panel2.Controls.Add(this.btn_MP_UserManagement);
             this.panel2.Controls.Add(this.btn_MP_MainOverview);
@@ -378,6 +380,25 @@
             this.panel2.Name = "panel2";
             this.panel2.Size = new System.Drawing.Size(152, 729);
             this.panel2.TabIndex = 1;
+            // 
+            // btn_MP_VM
+            // 
+            this.btn_MP_VM.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.btn_MP_VM.FlatAppearance.BorderSize = 0;
+            this.btn_MP_VM.FlatAppearance.MouseOverBackColor = System.Drawing.SystemColors.ControlLight;
+            this.btn_MP_VM.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btn_MP_VM.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btn_MP_VM.Location = new System.Drawing.Point(0, 276);
+            this.btn_MP_VM.Name = "btn_MP_VM";
+            this.btn_MP_VM.Size = new System.Drawing.Size(152, 92);
+            this.btn_MP_VM.TabIndex = 0;
+            this.btn_MP_VM.Text = "Variant Manager";
+            this.btn_MP_VM.UseVisualStyleBackColor = true;
+            this.btn_MP_VM.Click += new System.EventHandler(this.Btn_MP_VM_Click);
+            this.btn_MP_VM.Paint += new System.Windows.Forms.PaintEventHandler(this.Btn_MP_VM_Paint);
+            this.btn_MP_VM.MouseDown += new System.Windows.Forms.MouseEventHandler(this.Btn_MP_VM_MouseDown);
+            this.btn_MP_VM.MouseUp += new System.Windows.Forms.MouseEventHandler(this.Btn_MP_VM_MouseUp);
             // 
             // btn_MP_Reports
             // 
@@ -524,6 +545,7 @@
         private System.Windows.Forms.TextBox textBox3;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel3;
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel2;
+        private System.Windows.Forms.Button btn_MP_VM;
     }
 }
 
