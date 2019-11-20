@@ -48,13 +48,13 @@ namespace CompuScan_MES_Main
             SELECTED_USER = owner.GetSelectedUser();
             userDataTable = owner.GetUsers();
             DataRow row = userDataTable.Rows[SELECTED_USER];
-            txt_EDU_Name.Text = row["FirstName"].ToString();
-            prevName = row["FirstName"].ToString();
-            txt_EDU_Surname.Text = row["LastName"].ToString();
-            prevSurname = row["LastName"].ToString();
-            txt_EDU_AccessLevel.Text = row["AccessLevel"].ToString();
-            prevAccessLevel = row["AccessLevel"].ToString();
-            prevCardID = row["CardID"].ToString();
+            txt_EDU_Name.Text = row["[First Name]"].ToString();
+            prevName = row["[First Name]"].ToString();
+            txt_EDU_Surname.Text = row["[Last Name]"].ToString();
+            prevSurname = row["[Last Name]"].ToString();
+            txt_EDU_AccessLevel.Text = row["[Access Level]"].ToString();
+            prevAccessLevel = row["[Access Level]"].ToString();
+            prevCardID = row["[Card ID]"].ToString();
 
             rfidCode = string.Empty;
         }
@@ -100,7 +100,7 @@ namespace CompuScan_MES_Main
                 {
                     if (!prevCardID.Equals(string.Empty))
                     {
-                        using (SqlCommand cmd = new SqlCommand("UPDATE UserDetails SET CardID = @NewCardID WHERE CardID = @OldCardID", conn))
+                        using (SqlCommand cmd = new SqlCommand("UPDATE UserDetails SET [Card ID] = @NewCardID WHERE [Card ID] = @OldCardID", conn))
                         {
                             cmd.Parameters.AddWithValue("@NewCardID", tempStr);
                             cmd.Parameters.AddWithValue("@OldCardID", prevCardID);
@@ -110,8 +110,8 @@ namespace CompuScan_MES_Main
                     }
                     else
                     {
-                        using (SqlCommand cmd = new SqlCommand("UPDATE UserDetails SET CardID = @NewCardID WHERE FirstName = " +
-                            "@FirstName AND LastName = @LastName AND AccessLevel = @AccessLevel", conn))
+                        using (SqlCommand cmd = new SqlCommand("UPDATE UserDetails SET [Card ID] = @NewCardID WHERE [First Name] = " +
+                            "@FirstName AND [Last Name] = @LastName AND [Access Level] = @AccessLevel", conn))
                         {
                             cmd.Parameters.AddWithValue("@FirstName", prevName);
                             cmd.Parameters.AddWithValue("@LastName", prevSurname);
@@ -135,7 +135,7 @@ namespace CompuScan_MES_Main
             {
                 conn.Open();
                 dt = new DataTable();
-                SqlDataAdapter da = new SqlDataAdapter("SELECT CardID FROM UserDetails", conn);
+                SqlDataAdapter da = new SqlDataAdapter("SELECT [Card ID] FROM UserDetails", conn);
                 da.Fill(dt);
             }
 
@@ -144,7 +144,7 @@ namespace CompuScan_MES_Main
 
             foreach (DataRow row in dt.Rows)
             {
-                if (row["CardID"].ToString().Equals(tempStr))
+                if (row["[Card ID]"].ToString().Equals(tempStr))
                 {
                     return true;
                 }
@@ -194,8 +194,8 @@ namespace CompuScan_MES_Main
 
                 try
                 {
-                    using (SqlCommand sqlCommand = new SqlCommand("UPDATE UserDetails SET AccessLevel = @AccessLevel" +
-                        " WHERE FirstName = @FirstName AND LastName = @LastName", conn))
+                    using (SqlCommand sqlCommand = new SqlCommand("UPDATE UserDetails SET [Access Level] = @AccessLevel" +
+                        " WHERE [First Name] = @FirstName AND [Last Name] = @LastName", conn))
                     {
                         sqlCommand.Parameters.AddWithValue("@FirstName", txt_EDU_Name.Text.Trim());
                         sqlCommand.Parameters.AddWithValue("@LastName", txt_EDU_Surname.Text.Trim());
@@ -257,7 +257,7 @@ namespace CompuScan_MES_Main
 
                 try
                 {
-                    using (SqlCommand sqlCommand = new SqlCommand("DELETE FROM UserDetails WHERE FirstName = @FirstName AND LastName = @LastName AND AccessLevel = @AccessLevel", conn))
+                    using (SqlCommand sqlCommand = new SqlCommand("DELETE FROM UserDetails WHERE [First Name] = @FirstName AND [Last Name] = @LastName AND [Access Level] = @AccessLevel", conn))
                     {
                         sqlCommand.Parameters.AddWithValue("@FirstName", txt_EDU_Name.Text.Trim());
                         sqlCommand.Parameters.AddWithValue("@LastName", txt_EDU_Surname.Text.Trim());

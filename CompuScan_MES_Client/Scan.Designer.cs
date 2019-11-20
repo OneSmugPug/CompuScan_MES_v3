@@ -104,6 +104,7 @@
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "Scan";
             this.Text = "Scan";
+            this.Load += new System.EventHandler(this.Scan_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 

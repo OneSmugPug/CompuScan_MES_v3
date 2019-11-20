@@ -24,5 +24,10 @@ namespace CompuScan_MES_Client
         {
             this.client = client;
         }
+
+        private void Scan_Load(object sender, EventArgs e)
+        {
+
+        }
     }
 }

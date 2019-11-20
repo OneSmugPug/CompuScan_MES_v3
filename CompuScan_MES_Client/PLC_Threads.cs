@@ -142,7 +142,7 @@ namespace CompuScan_MES_Client
         public void WriteToSQLDataBase()
         {
 
-            using (SqlConnection conn = DBUtils.GetDBConnection())
+            using (SqlConnection conn = DBUtils.GetFEMDBConnection())
             {
                 conn.Open();
                 if (readTransactionID == 1)

@@ -282,10 +282,10 @@ namespace CompuScan_MES_Main
 
             foreach (DataRow row in dt.Rows)
             {
-                if (row["CardID"].ToString().Equals(tempStr))
+                if (row["[Card ID]"].ToString().Equals(tempStr))
                 {
-                    txt_MP_UserName.Text = row["FirstName"].ToString() + " " + row["LastName"];
-                    txt_MP_AccessLvl.Text = row["AccessLevel"].ToString();
+                    txt_MP_UserName.Text = row["[First Name]"].ToString() + " " + row["[Last Name]"];
+                    txt_MP_AccessLvl.Text = row["[Access Level]"].ToString();
                     return true;
                 }
             }
