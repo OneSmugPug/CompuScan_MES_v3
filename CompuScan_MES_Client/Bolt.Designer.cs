@@ -121,6 +121,7 @@
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "Bolt";
             this.Text = "Bolt";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Bolt_FormClosing);
             this.Load += new System.EventHandler(this.Bolt_Load);
             this.ResumeLayout(false);
             this.PerformLayout();

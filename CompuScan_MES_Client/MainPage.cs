@@ -59,7 +59,7 @@ namespace CompuScan_MES_Client
             EstablishConnection();
 
             //main_Panel.Controls.Clear();
-            //AwaitPart frmAwait = new AwaitPart(31);
+            //Pick frmAwait = new Pick(10,31);
             ////frmAwait.SetS7Client(client);
             //curForm = frmAwait;
             //curForm.TopLevel = false;

@@ -59,17 +59,11 @@ namespace CompuScan_MES_Client
                 readTransact.IsBackground = true;
                 readTransact.Start();
 
-                Thread readPallet = new Thread(ReadPalletDB);
-                readPallet.IsBackground = true;
-                readPallet.Start();
+                
 
                 Thread handshakeThr = new Thread(Handshake);
                 handshakeThr.IsBackground = true;
                 handshakeThr.Start();
-
-                Thread sendPalletThr = new Thread(SendPallet);
-                sendPalletThr.IsBackground = true;
-                sendPalletThr.Start();
             }
 
             parent = (MainPage)this.Owner;
@@ -134,8 +128,12 @@ namespace CompuScan_MES_Client
                 skidPresent = S7.GetBitAt(palletReadBuffer, 0, 0);
                 addPallet = S7.GetBitAt(palletReadBuffer, 0, 2);
 
-                if (skidPresent && !addPallet)
-                    oSignalSendPalletEvent.Set();
+                if (skidPresent && !addPallet) {
+                    if (SendPallet())
+                    {
+                        oSignalSendPalletEvent.Set();
+                    }
+                }
                 else if (skidPresent && addPallet)
                     oSignalAddPalletEvent.Set();
 
@@ -162,8 +160,12 @@ namespace CompuScan_MES_Client
                         if (!hasReadOne)
                         {
                             //WriteToSQLDataBase();
-                            Console.WriteLine("Got Transaction ID: " + readTransactionID + ". Writing to database and sending a transaction ID of " + (readTransactionID + 1) + " back to PLC.");
-                            writeTransactionID = readTransactionID + 1;
+                            //Console.WriteLine("Got Transaction ID: " + readTransactionID + ". Writing to database and sending a transaction ID of " + (readTransactionID + 1) + " back to PLC.");
+                            
+
+                            Thread readPallet = new Thread(ReadPalletDB);
+                            readPallet.IsBackground = true;
+                            readPallet.Start();
 
                             bool skidIDSet = false;
                             while (!skidIDSet)
@@ -172,6 +174,10 @@ namespace CompuScan_MES_Client
                                     skidIDSet = true;
                             }
 
+                            oSignalSendPalletEvent.WaitOne();
+                            oSignalSendPalletEvent.Reset();
+
+                            writeTransactionID = readTransactionID + 1;
                             WriteBackToPLC();
                             hasReadOne = true;
 
@@ -194,76 +200,74 @@ namespace CompuScan_MES_Client
         #endregion
 
         #region [Pallet in Station Structure]
-        private void SendPallet()
+        private bool SendPallet()
         {
-            while (isConnected)
+            //ReadAllValues();
+            //client.DBRead(3000, 0, readBuffer.Length, readBuffer);//1110
+            //readTransactionID = S7.GetByteAt(readBuffer, 45);
+
+            //oSignalSendPalletEvent.WaitOne(); //Thread waits for new value to be read by PLC DB Read Thread
+            //oSignalSendPalletEvent.Reset();
+
+            StringBuilder sb = new StringBuilder();
+
+            sb.Append(S7.GetByteAt(palletReadBuffer, 4))
+                .Append(S7.GetByteAt(palletReadBuffer, 5))
+                .Append(S7.GetByteAt(palletReadBuffer, 6))
+                .Append(S7.GetByteAt(palletReadBuffer, 7))
+                .Append(S7.GetByteAt(palletReadBuffer, 8))
+                .Append(S7.GetByteAt(palletReadBuffer, 9))
+                .Append(S7.GetByteAt(palletReadBuffer, 10))
+                .Append(S7.GetByteAt(palletReadBuffer, 11));
+
+            long palletID = Int64.Parse(sb.ToString());
+
+            using (SqlConnection conn = DBUtils.GetMainDBConnection())
             {
-                //ReadAllValues();
-                //client.DBRead(3000, 0, readBuffer.Length, readBuffer);//1110
-                //readTransactionID = S7.GetByteAt(readBuffer, 45);
+                conn.Open();
+                dt = new DataTable();
+                SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM Pallets WHERE [Pallet ID] = " + palletID, conn);
+                da.Fill(dt);
+            }
 
-                oSignalSendPalletEvent.WaitOne(); //Thread waits for new value to be read by PLC DB Read Thread
-                oSignalSendPalletEvent.Reset();
+            foreach (DataRow row in dt.Rows)
+            {
+                palletNum = Int32.Parse(row["Pallet Number"].ToString());
+            }
 
-                StringBuilder sb = new StringBuilder();
+            S7.SetIntAt(palletWriteBuffer, 0, (short)palletNum);
+            palletClient.DBWrite(3108, 0, palletWriteBuffer.Length, palletWriteBuffer);
 
-                sb.Append(S7.GetByteAt(palletReadBuffer, 4))
-                    .Append(S7.GetByteAt(palletReadBuffer, 5))
-                    .Append(S7.GetByteAt(palletReadBuffer, 6))
-                    .Append(S7.GetByteAt(palletReadBuffer, 7))
-                    .Append(S7.GetByteAt(palletReadBuffer, 8))
-                    .Append(S7.GetByteAt(palletReadBuffer, 9))
-                    .Append(S7.GetByteAt(palletReadBuffer, 10))
-                    .Append(S7.GetByteAt(palletReadBuffer, 11));
-
-                long palletID = Int64.Parse(sb.ToString());
-
-                using (SqlConnection conn = DBUtils.GetMainDBConnection())
+            if (palletNum > 0)
+            {
+                if (skidID.IsHandleCreated && parent.IsHandleCreated)
                 {
-                    conn.Open();
-                    dt = new DataTable();
-                    SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM Pallets WHERE [Pallet ID] = " + palletID, conn);
-                    da.Fill(dt);
-                }
-
-                foreach (DataRow row in dt.Rows)
-                {
-                    palletNum = Int32.Parse(row["Pallet Number"].ToString());
-                }
-
-                S7.SetIntAt(palletWriteBuffer, 0, (short)palletNum);
-                palletClient.DBWrite(3108, 0, palletWriteBuffer.Length, palletWriteBuffer);
-
-                if (palletNum > 0)
-                {
-                    if (skidID.IsHandleCreated && parent.IsHandleCreated)
+                    skidID.Invoke((MethodInvoker)delegate
                     {
-                        skidID.Invoke((MethodInvoker)delegate
-                        {
-                            skidID.Text = "Skid ID: " + palletNum;
-                        });
-                    }
-                    else skidID.Text = "Skid ID: " + palletNum;
+                        skidID.Text = "Skid ID: " + palletNum;
+                    });
                 }
-                else
+                else skidID.Text = "Skid ID: " + palletNum;
+                return true;
+            }
+            else
+            {
+                if (skidID.IsHandleCreated)
                 {
-                    if (skidID.IsHandleCreated)
-                    {
-                        skidID.Invoke((MethodInvoker)delegate
-                        {
-                            skidID.Text = "Skid ID: -";
-                            MessageBox.Show("Skid not found.", "Unknown Skid", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        });
-                    } 
-                    else
+                    skidID.Invoke((MethodInvoker)delegate
                     {
                         skidID.Text = "Skid ID: -";
                         MessageBox.Show("Skid not found.", "Unknown Skid", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }                                    
-                }
-                
-                //parent.SetPalletNum(palletNum);
+                    });
+                } 
+                else
+                {
+                    skidID.Text = "Skid ID: -";
+                    MessageBox.Show("Skid not found.", "Unknown Skid", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }                                    
             }
+            return false;
+            //parent.SetPalletNum(palletNum);
         }
         #endregion
 
