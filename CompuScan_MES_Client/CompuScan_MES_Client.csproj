@@ -159,5 +159,14 @@
   <ItemGroup>
     <None Include="Resources\successful_bolt_image.png" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Valeo.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\1200px-Valeo.svg.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\1200px-Valeo.svg1.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -29,8 +29,6 @@
         private void InitializeComponent()
         {
             this.main_Panel = new System.Windows.Forms.Panel();
-            this.label1 = new System.Windows.Forms.Label();
-            this.bunifuSeparator1 = new Bunifu.Framework.UI.BunifuSeparator();
             this.bunifuSeparator2 = new Bunifu.Framework.UI.BunifuSeparator();
             this.label2 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
@@ -38,8 +36,11 @@
             this.txt_MP_AccessLvl = new System.Windows.Forms.TextBox();
             this.tableLayoutPanel1 = new System.Windows.Forms.TableLayoutPanel();
             this.bunifuSeparator3 = new Bunifu.Framework.UI.BunifuSeparator();
-            this.pictureBox1 = new System.Windows.Forms.PictureBox();
             this.lblStationNum = new System.Windows.Forms.Label();
+            this.lbl_SkidID = new System.Windows.Forms.Label();
+            this.bunifuSeparator1 = new Bunifu.Framework.UI.BunifuSeparator();
+            this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.bunifuSeparator4 = new Bunifu.Framework.UI.BunifuSeparator();
             this.tableLayoutPanel1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
@@ -55,27 +56,6 @@
             this.main_Panel.Name = "main_Panel";
             this.main_Panel.Size = new System.Drawing.Size(812, 598);
             this.main_Panel.TabIndex = 0;
-            // 
-            // label1
-            // 
-            this.label1.Location = new System.Drawing.Point(0, 86);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(197, 13);
-            this.label1.TabIndex = 2;
-            this.label1.Text = "label1";
-            this.label1.TextAlign = System.Drawing.ContentAlignment.MiddleCenter;
-            // 
-            // bunifuSeparator1
-            // 
-            this.bunifuSeparator1.BackColor = System.Drawing.Color.Transparent;
-            this.bunifuSeparator1.LineColor = System.Drawing.Color.FromArgb(((int)(((byte)(105)))), ((int)(((byte)(105)))), ((int)(((byte)(105)))));
-            this.bunifuSeparator1.LineThickness = 1;
-            this.bunifuSeparator1.Location = new System.Drawing.Point(0, 81);
-            this.bunifuSeparator1.Name = "bunifuSeparator1";
-            this.bunifuSeparator1.Size = new System.Drawing.Size(197, 5);
-            this.bunifuSeparator1.TabIndex = 3;
-            this.bunifuSeparator1.Transparency = 255;
-            this.bunifuSeparator1.Vertical = false;
             // 
             // bunifuSeparator2
             // 
@@ -135,7 +115,7 @@
             this.tableLayoutPanel1.Controls.Add(this.label3, 0, 2);
             this.tableLayoutPanel1.Controls.Add(this.txt_MP_UserName, 0, 1);
             this.tableLayoutPanel1.Controls.Add(this.txt_MP_AccessLvl, 0, 3);
-            this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 104);
+            this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 85);
             this.tableLayoutPanel1.Name = "tableLayoutPanel1";
             this.tableLayoutPanel1.RowCount = 4;
             this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 25F));
@@ -150,32 +130,66 @@
             this.bunifuSeparator3.BackColor = System.Drawing.Color.Transparent;
             this.bunifuSeparator3.LineColor = System.Drawing.Color.FromArgb(((int)(((byte)(105)))), ((int)(((byte)(105)))), ((int)(((byte)(105)))));
             this.bunifuSeparator3.LineThickness = 1;
-            this.bunifuSeparator3.Location = new System.Drawing.Point(0, 209);
+            this.bunifuSeparator3.Location = new System.Drawing.Point(0, 184);
             this.bunifuSeparator3.Name = "bunifuSeparator3";
             this.bunifuSeparator3.Size = new System.Drawing.Size(197, 5);
             this.bunifuSeparator3.TabIndex = 10;
             this.bunifuSeparator3.Transparency = 255;
             this.bunifuSeparator3.Vertical = false;
             // 
-            // pictureBox1
-            // 
-            this.pictureBox1.Image = global::CompuScan_MES_Client.Properties.Resources.QTech_Logo;
-            this.pictureBox1.Location = new System.Drawing.Point(0, 0);
-            this.pictureBox1.Name = "pictureBox1";
-            this.pictureBox1.Size = new System.Drawing.Size(197, 81);
-            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
-            this.pictureBox1.TabIndex = 1;
-            this.pictureBox1.TabStop = false;
-            // 
             // lblStationNum
             // 
             this.lblStationNum.AutoSize = true;
             this.lblStationNum.Font = new System.Drawing.Font("Microsoft Sans Serif", 31F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblStationNum.Location = new System.Drawing.Point(12, 217);
+            this.lblStationNum.Location = new System.Drawing.Point(12, 189);
             this.lblStationNum.Name = "lblStationNum";
             this.lblStationNum.Size = new System.Drawing.Size(173, 48);
             this.lblStationNum.TabIndex = 11;
             this.lblStationNum.Text = "STN: ##";
+            // 
+            // lbl_SkidID
+            // 
+            this.lbl_SkidID.AutoSize = true;
+            this.lbl_SkidID.Font = new System.Drawing.Font("Microsoft Sans Serif", 24F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lbl_SkidID.Location = new System.Drawing.Point(13, 247);
+            this.lbl_SkidID.Name = "lbl_SkidID";
+            this.lbl_SkidID.Size = new System.Drawing.Size(147, 37);
+            this.lbl_SkidID.TabIndex = 11;
+            this.lbl_SkidID.Text = "Skid ID: -";
+            // 
+            // bunifuSeparator1
+            // 
+            this.bunifuSeparator1.BackColor = System.Drawing.Color.Transparent;
+            this.bunifuSeparator1.LineColor = System.Drawing.Color.FromArgb(((int)(((byte)(105)))), ((int)(((byte)(105)))), ((int)(((byte)(105)))));
+            this.bunifuSeparator1.LineThickness = 1;
+            this.bunifuSeparator1.Location = new System.Drawing.Point(0, 78);
+            this.bunifuSeparator1.Name = "bunifuSeparator1";
+            this.bunifuSeparator1.Size = new System.Drawing.Size(197, 5);
+            this.bunifuSeparator1.TabIndex = 3;
+            this.bunifuSeparator1.Transparency = 255;
+            this.bunifuSeparator1.Vertical = false;
+            // 
+            // pictureBox1
+            // 
+            this.pictureBox1.Image = global::CompuScan_MES_Client.Properties.Resources._1200px_Valeo1;
+            this.pictureBox1.Location = new System.Drawing.Point(0, 0);
+            this.pictureBox1.Name = "pictureBox1";
+            this.pictureBox1.Size = new System.Drawing.Size(197, 79);
+            this.pictureBox1.SizeMode = System.Windows.Forms.PictureBoxSizeMode.StretchImage;
+            this.pictureBox1.TabIndex = 1;
+            this.pictureBox1.TabStop = false;
+            // 
+            // bunifuSeparator4
+            // 
+            this.bunifuSeparator4.BackColor = System.Drawing.Color.Transparent;
+            this.bunifuSeparator4.LineColor = System.Drawing.Color.FromArgb(((int)(((byte)(105)))), ((int)(((byte)(105)))), ((int)(((byte)(105)))));
+            this.bunifuSeparator4.LineThickness = 1;
+            this.bunifuSeparator4.Location = new System.Drawing.Point(0, 238);
+            this.bunifuSeparator4.Name = "bunifuSeparator4";
+            this.bunifuSeparator4.Size = new System.Drawing.Size(197, 5);
+            this.bunifuSeparator4.TabIndex = 12;
+            this.bunifuSeparator4.Transparency = 255;
+            this.bunifuSeparator4.Vertical = false;
             // 
             // MainPage
             // 
@@ -183,12 +197,13 @@
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.Silver;
             this.ClientSize = new System.Drawing.Size(1008, 729);
+            this.Controls.Add(this.bunifuSeparator4);
+            this.Controls.Add(this.lbl_SkidID);
             this.Controls.Add(this.lblStationNum);
             this.Controls.Add(this.bunifuSeparator3);
             this.Controls.Add(this.tableLayoutPanel1);
             this.Controls.Add(this.bunifuSeparator2);
             this.Controls.Add(this.bunifuSeparator1);
-            this.Controls.Add(this.label1);
             this.Controls.Add(this.pictureBox1);
             this.Controls.Add(this.main_Panel);
             this.Name = "MainPage";
@@ -207,8 +222,6 @@
 
         private System.Windows.Forms.Panel main_Panel;
         private System.Windows.Forms.PictureBox pictureBox1;
-        private System.Windows.Forms.Label label1;
-        private Bunifu.Framework.UI.BunifuSeparator bunifuSeparator1;
         private Bunifu.Framework.UI.BunifuSeparator bunifuSeparator2;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Label label3;
@@ -217,6 +230,9 @@
         private System.Windows.Forms.TableLayoutPanel tableLayoutPanel1;
         private Bunifu.Framework.UI.BunifuSeparator bunifuSeparator3;
         private System.Windows.Forms.Label lblStationNum;
+        private System.Windows.Forms.Label lbl_SkidID;
+        private Bunifu.Framework.UI.BunifuSeparator bunifuSeparator1;
+        private Bunifu.Framework.UI.BunifuSeparator bunifuSeparator4;
     }
 }
 

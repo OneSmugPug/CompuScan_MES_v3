@@ -63,6 +63,26 @@ namespace CompuScan_MES_Client.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap _1200px_Valeo_svg {
+            get {
+                object obj = ResourceManager.GetObject("1200px-Valeo.svg", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap _1200px_Valeo1 {
+            get {
+                object obj = ResourceManager.GetObject("1200px-Valeo1", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap empty_bolt_image {
             get {
                 object obj = ResourceManager.GetObject("empty_bolt_image", resourceCulture);
@@ -96,6 +116,16 @@ namespace CompuScan_MES_Client.Properties {
         internal static System.Drawing.Bitmap successful_bolt_image {
             get {
                 object obj = ResourceManager.GetObject("successful_bolt_image", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap Valeo {
+            get {
+                object obj = ResourceManager.GetObject("Valeo", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

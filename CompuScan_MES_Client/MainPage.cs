@@ -18,41 +18,44 @@ namespace CompuScan_MES_Client
         #region [Objects and Variables]
         private S7Client 
             usersClient = new S7Client(),
+            oldUserClient = new S7Client(),
             sequenceClient = new S7Client();
-        private static byte[] 
+
+        private static byte[]
             rfidReadBuffer = new byte[54],
             userWriteBuffer = new byte[106], //use this to write access level to plc
             stepReadBuffer = new byte[8],
             echoReadBuffer = new byte[24],
-            echoWriteBuffer = new byte[2];
+            echoWriteBuffer = new byte[2],
+            oldUserReadBuffer = new byte[106];
         
-        private bool hasReadRFID = false;
-        private bool isConnected = false;
-        private bool stationSet = false;
-        
-        private bool changeScreen = false;
+        private bool 
+            hasReadRFID = false,
+            isConnected = false,
+            stationSet = false,
+            hasRestarted,
+            changeScreen = false;
+
+
+        private ManualResetEvent
+            oSignalSeqEvent = new ManualResetEvent(false),
+            oSignalUserEvent = new ManualResetEvent(false);
+
         private DataTable dt;
         private Form curForm;
-        public string rfidCode { get; set; }
-        
-        public int heartBeat { get; set; }
-        public int stationNum { get; set; }
-        public int stepNum { get; set; }
         private int oldStepNum = -1;
-        public int stepData { get; set; }
-
-        private ManualResetEvent oSignalSeqEvent = new ManualResetEvent(false);
-        private ManualResetEvent oSignalUserEvent = new ManualResetEvent(false);
         #endregion
 
+        #region [Form Load]
         public MainPage()
         {
             InitializeComponent();
         }
-
-        #region [Load Method]
+     
         private void MainPage_Load(object sender, EventArgs e)
         {
+            hasRestarted = true;
+
             EstablishConnection();
 
             //main_Panel.Controls.Clear();
@@ -68,18 +71,20 @@ namespace CompuScan_MES_Client
             if (isConnected)
             {
                 Thread readSeq = new Thread(ReadSeqDB);
+                readSeq.IsBackground = true;
                 readSeq.Start();
+
                 Thread readUser = new Thread(ReadUserDB);
+                readUser.IsBackground = true;
                 readUser.Start();
 
                 Thread rfidThread = new Thread(new ThreadStart(ReadRFID));
+                rfidThread.IsBackground = true;
                 rfidThread.Start();
+
                 Thread sequenceThread = new Thread(new ThreadStart(StartSequence));
+                sequenceThread.IsBackground = true;
                 sequenceThread.Start();
-            }
-            else
-            {
-                MessageBox.Show("No Connection to the plc", "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
         #endregion
@@ -89,23 +94,28 @@ namespace CompuScan_MES_Client
         {
             if (!isConnected)
             {
-                int connectionResult1 = sequenceClient.ConnectTo("192.168.1.1", 0, 1);
-                int connectionResult2 = usersClient.ConnectTo("192.168.1.1", 0, 1);
+                sequenceClient.ConnectTo("192.168.1.1", 0, 1);
+                usersClient.ConnectTo("192.168.1.1", 0, 1);
+                oldUserClient.ConnectTo("192.168.1.1", 0, 1);
 
-                if (connectionResult1 == 0 && connectionResult2 == 0)
-                {
-                    Console.WriteLine("=========Connection success===========");
+                if (sequenceClient.Connected && usersClient.Connected && oldUserClient.Connected)
                     isConnected = true;
-                }
-                else
-                {
-                    Console.WriteLine("=========Connection error============");
-                    isConnected = false;
-                    Console.WriteLine(connectionResult1);
-                    Console.WriteLine(connectionResult2);
-                    return;
+                else MessageBox.Show("Connection to PLC on 192.168.1.1 unsuccessful.", "No PLC Connection", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
-                }
+                //if (connectionResult1 == 0 && connectionResult2 == 0)
+                //{
+                //    Console.WriteLine("=========Connection success===========");
+                //    isConnected = true;
+                //}
+                //else
+                //{
+                //    Console.WriteLine("=========Connection error============");
+                //    isConnected = false;
+                //    Console.WriteLine(connectionResult1);
+                //    Console.WriteLine(connectionResult2);
+                //    return;
+
+                //}
             }
         }
         #endregion
@@ -127,95 +137,203 @@ namespace CompuScan_MES_Client
 
                 stepNum = S7.GetIntAt(stepReadBuffer, 4);
                 stepData = S7.GetIntAt(stepReadBuffer, 6);
+
                 switch (stepNum)
                 {
                     // Await part
                     case 0:
-                        this.Invoke((MethodInvoker)delegate
+                        if (main_Panel.InvokeRequired)
+                        {
+                            main_Panel.Invoke((MethodInvoker)delegate
+                            {
+                                if (curForm != null)
+                                    curForm.Close();
+
+                                main_Panel.Controls.Clear();
+                            });
+                        }
+                        else
                         {
                             if (curForm != null)
                                 curForm.Close();
 
                             main_Panel.Controls.Clear();
+                        }
 
-                            AwaitPart frmAwait = new AwaitPart();
-                            frmAwait.Owner = this;
+                        AwaitPart frmAwait = new AwaitPart();
+                        frmAwait.Owner = this;
+                        frmAwait.SetLabel(lbl_SkidID);
 
-                            curForm = frmAwait;
-                            curForm.TopLevel = false;
-                            curForm.TopMost = true;
-                            curForm.Dock = DockStyle.Fill;
+                        curForm = frmAwait;
+                        curForm.TopLevel = false;
+                        curForm.TopMost = true;
+                        curForm.Dock = DockStyle.Fill;
 
+                        if (main_Panel.InvokeRequired)
+                        {
+                            main_Panel.Invoke((MethodInvoker)delegate
+                            {
+                                main_Panel.Controls.Add(curForm);
+                                curForm.Show();
+                            });
+                        }
+                        else
+                        {
                             main_Panel.Controls.Add(curForm);
-
                             curForm.Show();
-                        });
+                        }                      
                         break;
                     // Scan part
                     case 1:
-                        this.Invoke((MethodInvoker)delegate
+                        if (main_Panel.InvokeRequired)
+                        {
+                            main_Panel.Invoke((MethodInvoker)delegate
+                            {
+                                if (curForm != null)
+                                    curForm.Close();
+
+                                main_Panel.Controls.Clear();
+                            });
+                        }
+                        else
                         {
                             if (curForm != null)
                                 curForm.Close();
 
                             main_Panel.Controls.Clear();
+                        }
 
-                            Scan frmScan = new Scan(stationNum);
-                            frmScan.SetS7Client(sequenceClient);
+                        Scan frmScan = new Scan(stationNum);
 
-                            curForm = frmScan;
-                            curForm.TopLevel = false;
-                            curForm.TopMost = true;
-                            curForm.Dock = DockStyle.Fill;
+                        curForm = frmScan;
+                        curForm.TopLevel = false;
+                        curForm.TopMost = true;
+                        curForm.Dock = DockStyle.Fill;
 
+                        if (main_Panel.InvokeRequired)
+                        {
+                            main_Panel.Invoke((MethodInvoker)delegate
+                            {
+                                main_Panel.Controls.Add(curForm);
+                                curForm.Show();
+                            });
+                        }
+                        else
+                        {
                             main_Panel.Controls.Add(curForm);
-
                             curForm.Show();
-                        });
+                        }
                         break;
                     // Pick part
                     case 2:
-                        this.Invoke((MethodInvoker)delegate
+                        if (main_Panel.InvokeRequired)
+                        {
+                            main_Panel.Invoke((MethodInvoker)delegate
+                            {
+                                if (curForm != null)
+                                    curForm.Close();
+
+                                main_Panel.Controls.Clear();
+                            });
+                        }
+                        else
                         {
                             if (curForm != null)
                                 curForm.Close();
 
                             main_Panel.Controls.Clear();
+                        }
 
-                            Pick frmPick = new Pick(stepData, stationNum);
-                            frmPick.SetS7Client(sequenceClient);
+                        Pick frmPick = new Pick(stepData, stationNum);
 
-                            curForm = frmPick;
-                            curForm.TopLevel = false;
-                            curForm.TopMost = true;
-                            curForm.Dock = DockStyle.Fill;
+                        curForm = frmPick;
+                        curForm.TopLevel = false;
+                        curForm.TopMost = true;
+                        curForm.Dock = DockStyle.Fill;
 
+                        if (main_Panel.InvokeRequired)
+                        {
+                            main_Panel.Invoke((MethodInvoker)delegate
+                            {
+                                main_Panel.Controls.Add(curForm);
+                                curForm.Show();
+                            });
+                        }
+                        else
+                        {
                             main_Panel.Controls.Add(curForm);
-
                             curForm.Show();
-                        });
+                        }
                         break;
                     // Bolt
                     case 3:
-                        this.Invoke((MethodInvoker)delegate
+                        if (main_Panel.InvokeRequired)
+                        {
+                            main_Panel.Invoke((MethodInvoker)delegate
+                            {
+                                if (curForm != null)
+                                    curForm.Close();
+
+                                main_Panel.Controls.Clear();
+                            });
+                        }
+                        else
                         {
                             if (curForm != null)
                                 curForm.Close();
 
                             main_Panel.Controls.Clear();
+                        }
 
-                            Bolt frmBolt = new Bolt(stepData, stationNum);
-                            frmBolt.SetS7Client(sequenceClient);
+                        Bolt frmBolt = new Bolt(stepData, stationNum);
 
-                            curForm = frmBolt;
-                            curForm.TopLevel = false;
-                            curForm.TopMost = true;
-                            curForm.Dock = DockStyle.Fill;
+                        curForm = frmBolt;
+                        curForm.TopLevel = false;
+                        curForm.TopMost = true;
+                        curForm.Dock = DockStyle.Fill;
 
+                        if (main_Panel.InvokeRequired)
+                        {
+                            main_Panel.Invoke((MethodInvoker)delegate
+                            {
+                                main_Panel.Controls.Add(curForm);
+                                curForm.Show();
+                            });
+                        }
+                        else
+                        {
                             main_Panel.Controls.Add(curForm);
-
                             curForm.Show();
-                        });
+                        }
+                        break;
+                    // Sequence Done
+                    case 99:
+                        if (main_Panel.InvokeRequired)
+                        {
+                            main_Panel.Invoke((MethodInvoker)delegate
+                            {
+                                if (curForm != null)
+                                    curForm.Close();
+
+                                main_Panel.Controls.Clear();
+                            });
+                        }
+                        else
+                        {
+                            if (curForm != null)
+                                curForm.Close();
+
+                            main_Panel.Controls.Clear();
+                        }
+
+                        if (lbl_SkidID.InvokeRequired)
+                        {
+                            lbl_SkidID.Invoke((MethodInvoker)delegate
+                            {
+                                lbl_SkidID.Text = "Skid ID: -";
+                            });
+                        }
+                        else lbl_SkidID.Text = "Skid ID: -";
                         break;
                     default:
                         break;
@@ -248,44 +366,97 @@ namespace CompuScan_MES_Client
 
                 if (!tempArr[0].Equals(string.Empty) && tempArr != null)
                 {
-                    string tempStr = tempArr[1].Remove(0, 4);
-                    using (SqlConnection conn = DBUtils.GetMainDBConnection())
+                    if (tempArr[1] != "ALIVE")
                     {
-                        conn.Open();
-                        dt = new DataTable();
-                        SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM UserDetails", conn);
-                        da.Fill(dt);
-                    }
-                    foreach (DataRow row in dt.Rows)
-                    {
-                        if (row["Card ID"].ToString().Equals(tempStr))
+                        string tempStr = tempArr[1].Remove(0, 4);
+
+                        using (SqlConnection conn = DBUtils.GetMainDBConnection())
                         {
-                            this.Invoke((MethodInvoker)delegate
-                            {
-                                txt_MP_UserName.Text = row["First Name"].ToString() + " " + row["Last Name"];
-                                txt_MP_AccessLvl.Text = row["Access Level"].ToString();
-                            });                           
-                            //Write the accesslevel to plc
-                            //only access level?
-                            S7.SetStringAt(userWriteBuffer, 0, 50, tempStr);
-                            S7.SetStringAt(userWriteBuffer, 52, 50, txt_MP_UserName.Text.ToString());
-                            short temp = short.Parse(txt_MP_AccessLvl.Text);
-                            S7.SetIntAt(userWriteBuffer, 104, temp);
-                            usersClient.DBWrite(3004, 0, userWriteBuffer.Length, userWriteBuffer);
+                            conn.Open();
+                            dt = new DataTable();
+                            SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM UserDetails", conn);
+                            da.Fill(dt);
                         }
+
+                        foreach (DataRow row in dt.Rows)
+                        {
+                            if (row["Card ID"].ToString().Equals(tempStr))
+                            {
+                                if (txt_MP_UserName.InvokeRequired)
+                                {
+                                    txt_MP_UserName.Invoke((MethodInvoker)delegate
+                                    {
+                                        txt_MP_UserName.Text = row["First Name"].ToString() + " " + row["Last Name"];
+                                    });
+                                }
+                                else txt_MP_UserName.Text = row["First Name"].ToString() + " " + row["Last Name"];
+
+                                if (txt_MP_AccessLvl.InvokeRequired)
+                                {
+                                    txt_MP_AccessLvl.Invoke((MethodInvoker)delegate
+                                    {
+                                        txt_MP_AccessLvl.Text = row["Access Level"].ToString();
+                                    });
+                                } 
+                                else txt_MP_AccessLvl.Text = row["Access Level"].ToString();
+
+                                S7.SetStringAt(userWriteBuffer, 0, 50, tempStr);
+                                S7.SetStringAt(userWriteBuffer, 52, 50, txt_MP_UserName.Text.ToString());
+
+                                short temp = short.Parse(txt_MP_AccessLvl.Text);
+                                S7.SetIntAt(userWriteBuffer, 104, temp);
+
+                                usersClient.DBWrite(3004, 0, userWriteBuffer.Length, userWriteBuffer);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        oldUserClient.DBRead(3004, 0, oldUserReadBuffer.Length, oldUserReadBuffer);
+
+                        if (txt_MP_UserName.InvokeRequired)
+                        {
+                            txt_MP_UserName.Invoke((MethodInvoker)delegate
+                            {
+                                txt_MP_UserName.Text = S7.GetStringAt(oldUserReadBuffer, 52);
+                            });
+                        }
+                        else txt_MP_UserName.Text = S7.GetStringAt(oldUserReadBuffer, 52);
+
+                        if (txt_MP_AccessLvl.InvokeRequired)
+                        {
+                            txt_MP_AccessLvl.Invoke((MethodInvoker)delegate
+                            {
+                                txt_MP_AccessLvl.Text = S7.GetIntAt(oldUserReadBuffer, 104).ToString();
+                            });
+                        }
+                        else txt_MP_AccessLvl.Text = S7.GetIntAt(oldUserReadBuffer, 104).ToString();
                     }
                 }
                 else
                 {
-                    this.Invoke((MethodInvoker)delegate
+                    if (txt_MP_UserName.InvokeRequired)
                     {
-                        txt_MP_UserName.Text = string.Empty;
-                        txt_MP_AccessLvl.Text = string.Empty;
-                    });
+                        txt_MP_UserName.Invoke((MethodInvoker)delegate
+                        {
+                            txt_MP_UserName.Text = string.Empty;
+                        });
+                    }
+                    else txt_MP_UserName.Text = string.Empty;
+
+                    if (txt_MP_AccessLvl.InvokeRequired)
+                    {
+                        txt_MP_AccessLvl.Invoke((MethodInvoker)delegate
+                        {
+                            txt_MP_AccessLvl.Text = string.Empty;
+                        });
+                    }
+                    else txt_MP_AccessLvl.Text = string.Empty;
                     
                     S7.SetStringAt(userWriteBuffer, 0, 50, string.Empty);
                     S7.SetStringAt(userWriteBuffer, 52, 50, string.Empty);
                     S7.SetIntAt(userWriteBuffer, 104, 0);
+
                     usersClient.DBWrite(3004, 0, userWriteBuffer.Length, userWriteBuffer);
                 }
 
@@ -303,20 +474,32 @@ namespace CompuScan_MES_Client
                 sequenceClient.DBRead(3002, 0, stepReadBuffer.Length, stepReadBuffer);
                 changeScreen = S7.GetBitAt(stepReadBuffer, 0, 0);
                 //stepNum = S7.GetIntAt(stepReadBuffer, 4);
-
                 stationNum = S7.GetIntAt(stepReadBuffer, 2);
 
                 if (!stationSet)
                 {
-                    this.Invoke((MethodInvoker)delegate
+                    if (lblStationNum.InvokeRequired)
                     {
-                        lblStationNum.Text = "STN: " + stationNum;
-                    });
+                        lblStationNum.Invoke((MethodInvoker)delegate
+                        {
+                            lblStationNum.Text = "STN: " + stationNum;
+                        });
+                    }
 
                     stationSet = true;
                 }
 
-                if (changeScreen)
+                if (hasRestarted)
+                {
+                    //palletClient.DBRead(3107, 0, palletReadBuffer.Length, palletReadBuffer);//1110
+                    //skidPresent = S7.GetBitAt(palletReadBuffer, 0, 0);
+
+
+
+                    oSignalSeqEvent.Set();
+                    hasRestarted = false;
+                }
+                else if (changeScreen)
                     oSignalSeqEvent.Set();
 
                 //if (stepNum != oldStepNum)
@@ -344,11 +527,23 @@ namespace CompuScan_MES_Client
         }
         #endregion
 
+        #region [PLC Getters/Setters] 
+        public string rfidCode { get; set; }
+        public string user { get; set; }
+        public int accessLevel { get; set; }
+        public int heartBeat { get; set; }
+        public int stationNum { get; set; }
+        public int stepNum { get; set; }
+        public int stepData { get; set; }
+        #endregion
+
+        #region [Form Closing]
         private void MainPage_FormClosing(object sender, FormClosingEventArgs e)
         {
             usersClient.Disconnect();
             sequenceClient.Disconnect();
             isConnected = false;
         }
+        #endregion
     }
 }
