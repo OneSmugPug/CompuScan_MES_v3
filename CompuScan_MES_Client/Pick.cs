@@ -30,7 +30,7 @@ namespace CompuScan_MES_Client
             curPickNum = 0,
             pickNum,
             txtBoxY = 38;
-
+        private Dictionary<string,TextBox> txtBoxes;
 
         public Pick(int pickNum, int stationNum)
         {
@@ -39,13 +39,14 @@ namespace CompuScan_MES_Client
             total_pick.Text = pickNum.ToString();
             txt_station_num.Text = stationNum.ToString();
             this.pickNum = pickNum;
-            
+            txtBoxes = new Dictionary<string, TextBox>();
         }
 
         private void Pick_Load(object sender, EventArgs e)
         {
+            //UNCOMMENT TO WORK
             EstablishConnection();
-            
+
             if (isConnected)
             {
                 PopulatePickTextBoxes();
@@ -58,7 +59,7 @@ namespace CompuScan_MES_Client
                 handshakeThr.IsBackground = true;
                 handshakeThr.Start();
             }
-            
+            //UNCOMMENT TO WORK
         }
 
         #region [Establish Connection]
@@ -77,9 +78,6 @@ namespace CompuScan_MES_Client
         {
             while (isConnected)
             {
-                //ReadAllValues();
-                //client.DBRead(3000, 0, readBuffer.Length, readBuffer);//1110
-                //readTransactionID = S7.GetByteAt(readBuffer, 45);
 
                 oSignalTransactEvent.WaitOne(); //Thread waits for new value to be read by PLC DB Read Thread
                 oSignalTransactEvent.Reset();
@@ -89,34 +87,194 @@ namespace CompuScan_MES_Client
                     case 1:
                         if (!hasReadOne)
                         {
-                            //WriteToSQLDataBase();
-                            //Console.WriteLine("Got Transaction ID: " + readTransactionID + ". Writing to database and sending a transaction ID of " + (readTransactionID + 1) + " back to PLC.");
-                            //writeTransactionID = readTransactionID + 1;
 
-                            //Thread readPallet = new Thread(ReadPalletDB);
-                            //readPallet.IsBackground = true;
-                            //readPallet.Start();
+                            string a = S7.GetStringAt(transactReadBuffer, 96).ToString();
+                            Console.WriteLine(a);
 
-                            //bool skidIDSet = false;
-                            //while (!skidIDSet)
-                            //{
-                            //    if (!skidID.Text.Equals("Skid ID: -"))
-                            //        skidIDSet = true;
-                            //}
+                            if (!a.Equals(""))
+                            {
+                                this.Invoke((MethodInvoker)delegate
+                                {
+                                    TextBox temp;
+                                    txtBoxes.TryGetValue("pickedBox1", out temp);
+                                    temp.Text = a.ToString();
+                                });
 
-                            //oSignalSendPalletEvent.WaitOne();
-                            //oSignalSendPalletEvent.Reset();
+                                // LOG TO DATABASE
 
-                            WriteBackToPLC();
-                            hasReadOne = true;
+                                S7.SetByteAt(transactWriteBuffer, 45, 2);
+                                int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                Console.WriteLine("Write Result : " + result2 + "---------------------------------------");
+                                hasReadOne = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine("NO DATA FOUND");
+                            }
+
+                            Thread.Sleep(50);
+                        }
+                        break;
+                    case 3:
+                        if (hasReadOne)
+                        {
+
+                            string a = S7.GetStringAt(transactReadBuffer, 96).ToString();
+                            Console.WriteLine(a);
+
+                            if (!a.Equals(""))
+                            {
+                                this.Invoke((MethodInvoker)delegate
+                                {
+                                    TextBox temp;
+                                    txtBoxes.TryGetValue("pickedBox2", out temp);
+                                    temp.Text = a.ToString();
+                                });
+
+                                // LOG TO DATABASE
+
+                                S7.SetByteAt(transactWriteBuffer, 45, 4);
+                                int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                Console.WriteLine("Write Result : " + result2 + "---------------------------------------");
+                                hasReadOne = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine("NO DATA FOUND");
+                            }
+
+                            Thread.Sleep(50);
+                        }
+                        break;
+                    case 5:
+                        if (hasReadOne)
+                        {
+
+                            string a = S7.GetStringAt(transactReadBuffer, 96).ToString();
+                            Console.WriteLine(a);
+
+                            if (!a.Equals(""))
+                            {
+                                this.Invoke((MethodInvoker)delegate
+                                {
+                                    TextBox temp;
+                                    txtBoxes.TryGetValue("pickedBox2", out temp);
+                                    temp.Text = a.ToString();
+                                });
+
+                                // LOG TO DATABASE
+
+                                S7.SetByteAt(transactWriteBuffer, 45, 6);
+                                int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                Console.WriteLine("Write Result : " + result2 + "---------------------------------------");
+                                hasReadOne = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine("NO DATA FOUND");
+                            }
+
+                            Thread.Sleep(50);
+                        }
+                        break;
+                    case 7:
+                        if (hasReadOne)
+                        {
+
+                            string a = S7.GetStringAt(transactReadBuffer, 96).ToString();
+                            Console.WriteLine(a);
+
+                            if (!a.Equals(""))
+                            {
+                                this.Invoke((MethodInvoker)delegate
+                                {
+                                    TextBox temp;
+                                    txtBoxes.TryGetValue("pickedBox3", out temp);
+                                    temp.Text = a.ToString();
+                                });
+
+                                // LOG TO DATABASE
+
+                                S7.SetByteAt(transactWriteBuffer, 45, 8);
+                                int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                Console.WriteLine("Write Result : " + result2 + "---------------------------------------");
+                                hasReadOne = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine("NO DATA FOUND");
+                            }
+
+                            Thread.Sleep(50);
+                        }
+                        break;
+                    case 9:
+                        if (hasReadOne)
+                        {
+
+                            string a = S7.GetStringAt(transactReadBuffer, 96).ToString();
+                            Console.WriteLine(a);
+
+                            if (!a.Equals(""))
+                            {
+                                this.Invoke((MethodInvoker)delegate
+                                {
+                                    TextBox temp;
+                                    txtBoxes.TryGetValue("pickedBox4", out temp);
+                                    temp.Text = a.ToString();
+                                });
+
+                                // LOG TO DATABASE
+
+                                S7.SetByteAt(transactWriteBuffer, 45, 10);
+                                int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                Console.WriteLine("Write Result : " + result2 + "---------------------------------------");
+                                hasReadOne = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine("NO DATA FOUND");
+                            }
+
+                            Thread.Sleep(50);
+                        }
+                        break;
+                    case 11:
+                        if (hasReadOne)
+                        {
+
+                            string a = S7.GetStringAt(transactReadBuffer, 96).ToString();
+                            Console.WriteLine(a);
+
+                            if (!a.Equals(""))
+                            {
+                                this.Invoke((MethodInvoker)delegate
+                                {
+                                    TextBox temp;
+                                    txtBoxes.TryGetValue("pickedBox5", out temp);
+                                    temp.Text = a.ToString();
+                                });
+
+                                // LOG TO DATABASE
+
+                                S7.SetByteAt(transactWriteBuffer, 45, 12);
+                                int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                Console.WriteLine("Write Result : " + result2 + "---------------------------------------");
+                                hasReadOne = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine("NO DATA FOUND");
+                            }
 
                             Thread.Sleep(50);
                         }
                         break;
                     case 99:
                         Console.WriteLine("PLC Requested to stop communication... Sending final transaction to PLC.");
-                        writeTransactionID = 100;
-                        WriteBackToPLC();
+                        S7.SetByteAt(transactWriteBuffer, 45, 100);
+                        int result4 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                        Console.WriteLine("Write Result : " + result4 + "---------------------------------------");
                         hasReadOne = false;
 
                         Thread.Sleep(50);
@@ -133,8 +291,10 @@ namespace CompuScan_MES_Client
         {
             while (isConnected)
             {
-                transactClient.DBRead(3000, 0, transactReadBuffer.Length, transactReadBuffer);//1110
+                transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
                 readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
+
+                Console.WriteLine(readTransactionID);
 
                 if (readTransactionID != oldReadTransactionID)
                 {
@@ -150,7 +310,7 @@ namespace CompuScan_MES_Client
         #region [PLC DB Read/Write]
         private void ReadAllValues()
         {
-            transactClient.DBRead(3000, 0, transactReadBuffer.Length, transactReadBuffer);//1110
+            transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
 
             lineID = S7.GetStringAt(transactReadBuffer, 0);
 
@@ -227,6 +387,9 @@ namespace CompuScan_MES_Client
                 txtPicked.Size = new Size(100, 20);
                 txtPicked.Text = txtPicked.Name;
                 txtBoxY += 38;
+
+                txtBoxes.Add(txtReq.Name, txtReq);
+                txtBoxes.Add(txtPicked.Name, txtPicked);
 
                 pickBoxPnl.Controls.Add(txtReq);
                 pickBoxPnl.Controls.Add(txtPicked);

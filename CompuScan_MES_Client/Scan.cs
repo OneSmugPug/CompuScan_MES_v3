@@ -22,8 +22,8 @@ namespace CompuScan_MES_Client
         private int 
             oldReadTransactionID = 0;
         public static byte[]
-            transactReadBuffer = new byte[296],
-            transactWriteBuffer = new byte[296];
+            transactReadBuffer = new byte[402],
+            transactWriteBuffer = new byte[402];
         private ManualResetEvent
             oSignalTransactEvent = new ManualResetEvent(false);
 
@@ -66,9 +66,6 @@ namespace CompuScan_MES_Client
         {
             while (isConnected)
             {
-                //ReadAllValues();
-                //client.DBRead(3000, 0, readBuffer.Length, readBuffer);//1110
-                //readTransactionID = S7.GetByteAt(readBuffer, 45);
 
                 oSignalTransactEvent.WaitOne(); //Thread waits for new value to be read by PLC DB Read Thread
                 oSignalTransactEvent.Reset();
@@ -78,34 +75,39 @@ namespace CompuScan_MES_Client
                     case 1:
                         if (!hasReadOne)
                         {
-                            //WriteToSQLDataBase();
-                            //Console.WriteLine("Got Transaction ID: " + readTransactionID + ". Writing to database and sending a transaction ID of " + (readTransactionID + 1) + " back to PLC.");
-                            //writeTransactionID = readTransactionID + 1;
+                            string a = S7.GetStringAt(transactReadBuffer, 96).ToString();
+                            Console.WriteLine(a);
 
-                            //Thread readPallet = new Thread(ReadPalletDB);
-                            //readPallet.IsBackground = true;
-                            //readPallet.Start();
+                            if (!a.Equals(""))
+                            {
+                                this.Invoke((MethodInvoker)delegate
+                                {
+                                    scan_txt.Text = a.ToString();
+                                });
 
-                            //bool skidIDSet = false;
-                            //while (!skidIDSet)
-                            //{
-                            //    if (!skidID.Text.Equals("Skid ID: -"))
-                            //        skidIDSet = true;
-                            //}
+                                // LOG TO DATABASE
 
-                            //oSignalSendPalletEvent.WaitOne();
-                            //oSignalSendPalletEvent.Reset();
+                                S7.SetByteAt(transactWriteBuffer, 45, 2);
+                                int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                Console.WriteLine("Write Result : " + result2 + "---------------------------------------");
+                                hasReadOne = true;
+                            }
+                            else
+                            {
+                                Console.WriteLine("NO DATA FOUND");
+                            }
+                            
 
-                            WriteBackToPLC();
-                            hasReadOne = true;
+                            
 
                             Thread.Sleep(50);
                         }
                         break;
                     case 99:
                         Console.WriteLine("PLC Requested to stop communication... Sending final transaction to PLC.");
-                        writeTransactionID = 100;
-                        WriteBackToPLC();
+                        S7.SetByteAt(transactWriteBuffer, 45, 100);
+                        int result4 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                        Console.WriteLine("Write Result : " + result4 + "---------------------------------------");
                         hasReadOne = false;
 
                         Thread.Sleep(50);
@@ -122,7 +124,7 @@ namespace CompuScan_MES_Client
         {
             while (isConnected)
             {
-                transactClient.DBRead(3000, 0, transactReadBuffer.Length, transactReadBuffer);//1110
+                transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
                 readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
 
                 if (readTransactionID != oldReadTransactionID)
@@ -139,7 +141,7 @@ namespace CompuScan_MES_Client
         #region [PLC DB Read/Write]
         private void ReadAllValues()
         {
-            transactClient.DBRead(3000, 0, transactReadBuffer.Length, transactReadBuffer);//1110
+            transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
 
             lineID = S7.GetStringAt(transactReadBuffer, 0);
 
@@ -174,7 +176,7 @@ namespace CompuScan_MES_Client
             //S7.SetStringAt(writeBuffer, 50, 20, userName);
             //S7.SetByteAt(writeBuffer, 94, (byte)equipmentID);
             //S7.SetStringAt(writeBuffer, 96, 200, productionData);
-            int writeResult = transactClient.DBWrite(3001, 0, transactWriteBuffer.Length, transactWriteBuffer);//1111
+            int writeResult = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);//1111
             if (writeResult == 0)
             {
                 Console.WriteLine("==> Successfully wrote to PLC");

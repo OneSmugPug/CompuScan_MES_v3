@@ -28,16 +28,19 @@ namespace CompuScan_MES_Client
             transactWriteBuffer = new byte[296];
         private ManualResetEvent
             oSignalTransactEvent = new ManualResetEvent(false);
-        private int curBoltNum = 0;
-        private int picBoxY = 12;
-        private int picBoxX = 12;
-        private int boltNum;
+        private int 
+            curBoltNum = 0,
+            picBoxY = 12,
+            picBoxX = 12,
+            boltNum;
+        private Dictionary<string, PictureBox> picBoxes;
 
         public Bolt(int boltNum, int stationNum)
         {
             InitializeComponent();
             this.boltNum = boltNum;
             txt_station_num.Text = stationNum.ToString();
+            picBoxes = new Dictionary<string, PictureBox>();
         }
 
         private void Bolt_Load(object sender, EventArgs e)
@@ -77,9 +80,6 @@ namespace CompuScan_MES_Client
         {
             while (isConnected)
             {
-                //ReadAllValues();
-                //client.DBRead(3000, 0, readBuffer.Length, readBuffer);//1110
-                //readTransactionID = S7.GetByteAt(readBuffer, 45);
 
                 oSignalTransactEvent.WaitOne(); //Thread waits for new value to be read by PLC DB Read Thread
                 oSignalTransactEvent.Reset();
@@ -89,23 +89,8 @@ namespace CompuScan_MES_Client
                     case 1:
                         if (!hasReadOne)
                         {
-                            //WriteToSQLDataBase();
-                            //Console.WriteLine("Got Transaction ID: " + readTransactionID + ". Writing to database and sending a transaction ID of " + (readTransactionID + 1) + " back to PLC.");
-                            //writeTransactionID = readTransactionID + 1;
 
-                            //Thread readPallet = new Thread(ReadPalletDB);
-                            //readPallet.IsBackground = true;
-                            //readPallet.Start();
-
-                            //bool skidIDSet = false;
-                            //while (!skidIDSet)
-                            //{
-                            //    if (!skidID.Text.Equals("Skid ID: -"))
-                            //        skidIDSet = true;
-                            //}
-
-                            //oSignalSendPalletEvent.WaitOne();
-                            //oSignalSendPalletEvent.Reset();
+                            // DO WORK
 
                             WriteBackToPLC();
                             hasReadOne = true;
@@ -217,6 +202,7 @@ namespace CompuScan_MES_Client
             for (int i = 0; i < boltNum; i++)
             {
                 PictureBox picBox = new PictureBox();
+                picBox.Name = "picBox" + (i+1);
                 picBox.Image = (Image)Resources.ResourceManager.GetObject("empty_bolt_image");
                 picBox.Location = new Point(picBoxX, picBoxY);
                 picBox.Size = new Size(75, 75);
@@ -227,6 +213,8 @@ namespace CompuScan_MES_Client
                     picBoxX += 87;
                     picBoxY = 12;
                 }
+
+                picBoxes.Add(picBox.Name, picBox);
 
                 this.Controls.Add(picBox);
             }

@@ -101,21 +101,6 @@ namespace CompuScan_MES_Client
                 if (sequenceClient.Connected && usersClient.Connected && oldUserClient.Connected)
                     isConnected = true;
                 else MessageBox.Show("Connection to PLC on 192.168.1.1 unsuccessful.", "No PLC Connection", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
-                //if (connectionResult1 == 0 && connectionResult2 == 0)
-                //{
-                //    Console.WriteLine("=========Connection success===========");
-                //    isConnected = true;
-                //}
-                //else
-                //{
-                //    Console.WriteLine("=========Connection error============");
-                //    isConnected = false;
-                //    Console.WriteLine(connectionResult1);
-                //    Console.WriteLine(connectionResult2);
-                //    return;
-
-                //}
             }
         }
         #endregion
@@ -406,13 +391,13 @@ namespace CompuScan_MES_Client
                                 short temp = short.Parse(txt_MP_AccessLvl.Text);
                                 S7.SetIntAt(userWriteBuffer, 104, temp);
 
-                                usersClient.DBWrite(3004, 0, userWriteBuffer.Length, userWriteBuffer);
+                                usersClient.DBWrite(3104, 0, userWriteBuffer.Length, userWriteBuffer);
                             }
                         }
                     }
                     else
                     {
-                        oldUserClient.DBRead(3004, 0, oldUserReadBuffer.Length, oldUserReadBuffer);
+                        oldUserClient.DBRead(3104, 0, oldUserReadBuffer.Length, oldUserReadBuffer);
 
                         if (txt_MP_UserName.InvokeRequired)
                         {
@@ -457,7 +442,7 @@ namespace CompuScan_MES_Client
                     S7.SetStringAt(userWriteBuffer, 52, 50, string.Empty);
                     S7.SetIntAt(userWriteBuffer, 104, 0);
 
-                    usersClient.DBWrite(3004, 0, userWriteBuffer.Length, userWriteBuffer);
+                    usersClient.DBWrite(3104, 0, userWriteBuffer.Length, userWriteBuffer);
                 }
 
                 hasReadRFID = false; // creates unlimited rfid reading
@@ -471,7 +456,7 @@ namespace CompuScan_MES_Client
         {
             while (isConnected)
             {
-                sequenceClient.DBRead(3002, 0, stepReadBuffer.Length, stepReadBuffer);
+                sequenceClient.DBRead(3102, 0, stepReadBuffer.Length, stepReadBuffer);
                 changeScreen = S7.GetBitAt(stepReadBuffer, 0, 0);
                 //stepNum = S7.GetIntAt(stepReadBuffer, 4);
                 stationNum = S7.GetIntAt(stepReadBuffer, 2);
@@ -494,8 +479,6 @@ namespace CompuScan_MES_Client
                     //palletClient.DBRead(3107, 0, palletReadBuffer.Length, palletReadBuffer);//1110
                     //skidPresent = S7.GetBitAt(palletReadBuffer, 0, 0);
 
-
-
                     oSignalSeqEvent.Set();
                     hasRestarted = false;
                 }
@@ -516,7 +499,7 @@ namespace CompuScan_MES_Client
         {
             while (isConnected)
             {
-                usersClient.DBRead(3003, 0, rfidReadBuffer.Length, rfidReadBuffer);
+                usersClient.DBRead(3103, 0, rfidReadBuffer.Length, rfidReadBuffer);
                 hasReadRFID = S7.GetBitAt(rfidReadBuffer, 0, 0);
 
                 if (hasReadRFID)
