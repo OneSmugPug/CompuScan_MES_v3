@@ -34,7 +34,8 @@ namespace CompuScan_MES_Client
             isConnected = false,
             stationSet = false,
             hasRestarted,
-            changeScreen = false;
+            changeScreen = false,
+            hasChanged = false;
 
 
         private ManualResetEvent
@@ -458,8 +459,9 @@ namespace CompuScan_MES_Client
             {
                 sequenceClient.DBRead(3102, 0, stepReadBuffer.Length, stepReadBuffer);
                 changeScreen = S7.GetBitAt(stepReadBuffer, 0, 0);
-                //stepNum = S7.GetIntAt(stepReadBuffer, 4);
                 stationNum = S7.GetIntAt(stepReadBuffer, 2);
+
+                //Console.WriteLine(changeScreen);
 
                 if (!stationSet)
                 {
@@ -476,20 +478,18 @@ namespace CompuScan_MES_Client
 
                 if (hasRestarted)
                 {
-                    //palletClient.DBRead(3107, 0, palletReadBuffer.Length, palletReadBuffer);//1110
-                    //skidPresent = S7.GetBitAt(palletReadBuffer, 0, 0);
-
                     oSignalSeqEvent.Set();
                     hasRestarted = false;
                 }
-                else if (changeScreen)
+                else if (changeScreen && !hasChanged)
+                {
+                    hasChanged = true;
                     oSignalSeqEvent.Set();
-
-                //if (stepNum != oldStepNum)
-                //{
-                //    oSignalSeqEvent.Set();
-                //    oldStepNum = stepNum;
-                //}
+                }
+                else if (!changeScreen && hasChanged)
+                {
+                    hasChanged = false;
+                }
 
                 Thread.Sleep(50);
             }

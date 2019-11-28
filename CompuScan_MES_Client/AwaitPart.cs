@@ -121,27 +121,6 @@ namespace CompuScan_MES_Client
                 Thread.Sleep(50);
             }
         }
-
-        private void ReadPalletDB()
-        {
-            while (isConnected)
-            {
-                palletClient.DBRead(3107, 0, palletReadBuffer.Length, palletReadBuffer);//1110
-                skidPresent = S7.GetBitAt(palletReadBuffer, 0, 0);
-                addPallet = S7.GetBitAt(palletReadBuffer, 0, 1);
-
-                if (skidPresent && !addPallet) {
-                    if (SendPallet())
-                    {
-                        oSignalSendPalletEvent.Set();
-                    }
-                }
-                else if (skidPresent && addPallet)
-                    oSignalAddPalletEvent.Set();
-
-                Thread.Sleep(50);
-            }
-        }
         #endregion
 
         #region [Handshake Structure]
@@ -165,7 +144,7 @@ namespace CompuScan_MES_Client
                     .Append(S7.GetByteAt(transactReadBuffer, 359));
 
                 long palletID = Int64.Parse(sb.ToString());
-                Console.WriteLine("Pallet ID : " + palletID + "---------------------------------------");
+                Console.WriteLine("Pallet ID : " + sb.ToString() + "---------------------------------------");
 
                 switch (readTransactionID)
                 {
@@ -176,7 +155,7 @@ namespace CompuScan_MES_Client
                             {
                                 conn.Open();
                                 dt = new DataTable();
-                                SqlDataAdapter da = new SqlDataAdapter("SELECT [Pallet Number] FROM Pallets WHERE [Pallet ID] = " + palletID, conn);
+                                SqlDataAdapter da = new SqlDataAdapter("SELECT [Pallet Number] FROM Pallets WHERE [Pallet ID] = '" + palletID + "'", conn);
                                 da.Fill(dt);
                                 Console.WriteLine("Data table rows : " + dt.Rows.Count + "---------------------------------------");
                             }
@@ -186,6 +165,7 @@ namespace CompuScan_MES_Client
                                 foreach (DataRow row in dt.Rows)
                                 {
                                     palletNum = Int32.Parse(row["Pallet Number"].ToString());
+                                    UpdateUISkidID();
                                 }
                                 Console.WriteLine("FOUND IN DATABASE ... SENDING 2 BACK TO PLC---------------------------------------");
                                 S7.SetByteAt(transactWriteBuffer, 45, 2);
@@ -195,42 +175,62 @@ namespace CompuScan_MES_Client
                             }
                             else
                             {
-                                Console.WriteLine("NOT FOUND IN DATABASE ... SENDING 99 BACK TO PLC---------------------------------------");
-                                S7.SetByteAt(transactWriteBuffer, 45, 2);
-                                S7.SetStringAt(transactWriteBuffer, 96, 254, "99");
+                                Console.WriteLine("NOT FOUND IN DATABASE ... SENDING 99 BACK TO PLC AS AN ERROR CODE---------------------------------------");
+                                S7.SetByteAt(transactWriteBuffer, 45, 1);
+                                S7.SetByteAt(transactWriteBuffer, 48, 99);
                                 int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                                 Console.WriteLine("Write Result : " + result2 + "---------------------------------------");
                             }
 
-                            bool skidIDSet = false;
-                            //while (!skidIDSet)
-                            //{
-                            //    if (!skidID.Text.Equals("Skid ID: -"))
-                            //        skidIDSet = true;
-                            //}
-
                             hasReadOne = true;
 
                             Thread.Sleep(50);
+                        }
+                        else
+                        {
+                            MessageBox.Show("Previous handshake was not completed.", "Out of order Transaction ID", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                         break;
                     case 3:
                         if (hasReadOne)
                         {
                             string a = S7.GetStringAt(transactReadBuffer, 96).ToString();
-                            palletNum = Int32.Parse(a); // CHECK FOR DUPLICATE PALLET NUM IN DATABASE, IF DUPLICATE, TELL PLC, OTHERWISE ADD TO DATABASE
+                            palletNum = Int32.Parse(a);
                             using (SqlConnection conn = DBUtils.GetMainDBConnection())
                             {
                                 conn.Open();
-                                SqlCommand da = new SqlCommand("INSERT INTO Pallets ([Pallet ID],[Pallet Number]) VALUES (@palletID,@palletNum)", conn);
-                                da.Parameters.AddWithValue("@palletID", palletID);
-                                da.Parameters.AddWithValue("@palletNum", palletNum);
-                                da.ExecuteNonQuery();
-                                S7.SetByteAt(transactWriteBuffer, 45, 4);
-                                S7.SetStringAt(transactWriteBuffer, 96, 200, palletNum.ToString());
-                                int result3 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                                Console.WriteLine("Write Result : " + result3 + "---------------------------------------");
+
+                                dt = new DataTable();
+                                SqlDataAdapter da1 = new SqlDataAdapter("SELECT [Pallet Number] FROM Pallets WHERE [Pallet Number] = " + palletNum, conn);
+                                da1.Fill(dt);
+                                Console.WriteLine("Data table rows : " + dt.Rows.Count + "---------------------------------------");
+
+                                // If no duplicates were found
+                                if (dt.Rows.Count == 0)
+                                {
+                                    SqlCommand da2 = new SqlCommand("INSERT INTO Pallets ([Pallet ID],[Pallet Number]) VALUES (@palletID,@palletNum)", conn);
+                                    da2.Parameters.AddWithValue("@palletID", sb.ToString());
+                                    da2.Parameters.AddWithValue("@palletNum", palletNum);
+                                    da2.ExecuteNonQuery();
+                                    UpdateUISkidID();
+                                    S7.SetByteAt(transactWriteBuffer, 45, 4);
+                                    S7.SetStringAt(transactWriteBuffer, 96, 200, palletNum.ToString());
+                                    int result3 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                    Console.WriteLine("Write Result : " + result3 + "---------------------------------------");
+                                }
+                                else
+                                {
+                                    S7.SetByteAt(transactWriteBuffer, 45, 1);
+                                    S7.SetByteAt(transactWriteBuffer, 48, 98);
+                                    int result3 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                    Console.WriteLine("Write Result : " + result3 + "---------------------------------------");
+                                    MessageBox.Show("Duplicate Pallet Number Was Found.", "Duplicate", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                }
                             }
+                        }
+                        else
+                        {
+                            MessageBox.Show("Transaction ID of 1 never recieved.", "Out of order Transaction ID", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         }
                         break;
                     case 99:
@@ -249,45 +249,9 @@ namespace CompuScan_MES_Client
         }
         #endregion
 
-        #region [Pallet in Station Structure]
-        private bool SendPallet()
+        #region [Update SkidID on UI]
+        private bool UpdateUISkidID()
         {
-            //ReadAllValues();
-            //client.DBRead(3000, 0, readBuffer.Length, readBuffer);//1110
-            //readTransactionID = S7.GetByteAt(readBuffer, 45);
-
-            //oSignalSendPalletEvent.WaitOne(); //Thread waits for new value to be read by PLC DB Read Thread
-            //oSignalSendPalletEvent.Reset();
-
-            StringBuilder sb = new StringBuilder();
-
-            sb.Append(S7.GetByteAt(palletReadBuffer, 4))
-                .Append(S7.GetByteAt(palletReadBuffer, 5))
-                .Append(S7.GetByteAt(palletReadBuffer, 6))
-                .Append(S7.GetByteAt(palletReadBuffer, 7))
-                .Append(S7.GetByteAt(palletReadBuffer, 8))
-                .Append(S7.GetByteAt(palletReadBuffer, 9))
-                .Append(S7.GetByteAt(palletReadBuffer, 10))
-                .Append(S7.GetByteAt(palletReadBuffer, 11));
-
-            long palletID = Int64.Parse(sb.ToString());
-
-            using (SqlConnection conn = DBUtils.GetMainDBConnection())
-            {
-                conn.Open();
-                dt = new DataTable();
-                SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM Pallets WHERE [Pallet ID] = " + palletID, conn);
-                da.Fill(dt);
-            }
-
-            foreach (DataRow row in dt.Rows)
-            {
-                palletNum = Int32.Parse(row["Pallet Number"].ToString());
-            }
-
-            S7.SetIntAt(palletWriteBuffer, 0, (short)palletNum);
-            palletClient.DBWrite(3108, 0, palletWriteBuffer.Length, palletWriteBuffer);
-
             if (palletNum > 0)
             {
                 if (skidID.IsHandleCreated && parent.IsHandleCreated)
@@ -317,41 +281,6 @@ namespace CompuScan_MES_Client
                 }
                 return false;
             }
-            
-            //parent.SetPalletNum(palletNum);
-        }
-
-        private void AddPallet()
-        {
-            StringBuilder sb = new StringBuilder();
-
-            sb.Append(S7.GetByteAt(palletReadBuffer, 4))
-                .Append(S7.GetByteAt(palletReadBuffer, 5))
-                .Append(S7.GetByteAt(palletReadBuffer, 6))
-                .Append(S7.GetByteAt(palletReadBuffer, 7))
-                .Append(S7.GetByteAt(palletReadBuffer, 8))
-                .Append(S7.GetByteAt(palletReadBuffer, 9))
-                .Append(S7.GetByteAt(palletReadBuffer, 10))
-                .Append(S7.GetByteAt(palletReadBuffer, 11));
-
-            long palletID = Int64.Parse(sb.ToString());
-
-            foreach (DataRow row in dt.Rows)
-            {
-                palletNum = Int32.Parse(row["Pallet Number"].ToString());
-            }
-
-            using (SqlConnection conn = DBUtils.GetMainDBConnection())
-            {
-                conn.Open();
-                SqlCommand da = new SqlCommand("INSERT INTO Pallets ([Pallet ID],[Pallet Number]) VALUES (@palletID,@palletNum)", conn);
-                da.Parameters.AddWithValue("@palletID", palletID);
-                da.Parameters.AddWithValue("@palletNum", palletID);
-                da.ExecuteNonQuery();
-            }
-
-            S7.SetIntAt(palletWriteBuffer, 0, (short)palletNum);
-            palletClient.DBWrite(3108, 0, palletWriteBuffer.Length, palletWriteBuffer);
         }
         #endregion
 
@@ -359,52 +288,6 @@ namespace CompuScan_MES_Client
         {
             this.skidID = skidID;
         }
-
-        #region [PLC DB Read/Write]
-        private void ReadAllValues()
-        {
-            transactClient.DBRead(3000, 0, transactReadBuffer.Length, transactReadBuffer);//1110
-
-            lineID = S7.GetStringAt(transactReadBuffer, 0);
-
-            identifier = S7.GetStringAt(transactReadBuffer, 22);
-
-            identifierCount = S7.GetByteAt(transactReadBuffer, 44); // Number of entries in the database (Does not really need to read but write it to plc?)
-
-            readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
-
-            channelStatus = S7.GetByteAt(transactReadBuffer, 46);
-
-            stationStatus = S7.GetByteAt(transactReadBuffer, 47);
-
-            errorCode = S7.GetByteAt(transactReadBuffer, 48);
-
-            userName = S7.GetStringAt(transactReadBuffer, 50);
-
-            equipmentID = S7.GetByteAt(transactReadBuffer, 94);
-
-            productionData = S7.GetStringAt(transactReadBuffer, 96);
-        }
-
-        public void WriteBackToPLC()
-        {
-            //S7.SetStringAt(writeBuffer, 0, 20, lineID);
-            //S7.SetStringAt(writeBuffer, 22, 20, identifier);
-            //S7.SetByteAt(writeBuffer, 44, (byte)identifierCount);
-            S7.SetByteAt(transactWriteBuffer, 45, (byte)writeTransactionID);
-            //S7.SetByteAt(writeBuffer, 46, (byte)channelStatus);
-            //S7.SetByteAt(writeBuffer, 47, (byte)stationStatus);
-            //S7.SetByteAt(writeBuffer, 48, (byte)errorCode);
-            //S7.SetStringAt(writeBuffer, 50, 20, userName);
-            //S7.SetByteAt(writeBuffer, 94, (byte)equipmentID);
-            //S7.SetStringAt(writeBuffer, 96, 200, productionData);
-            int writeResult = transactClient.DBWrite(3001, 0, transactWriteBuffer.Length, transactWriteBuffer);//1111
-            if (writeResult == 0)
-            {
-                Console.WriteLine("==> Successfully wrote to PLC");
-            }
-        }
-        #endregion
 
         #region [PLC Getters/Setters]
         public string lineID { get; set; }

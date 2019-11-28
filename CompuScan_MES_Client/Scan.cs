@@ -73,8 +73,8 @@ namespace CompuScan_MES_Client
                 switch (readTransactionID)
                 {
                     case 1:
-                        if (!hasReadOne)
-                        {
+                        //if (!hasReadOne)
+                        //{
                             string a = S7.GetStringAt(transactReadBuffer, 96).ToString();
                             Console.WriteLine(a);
 
@@ -95,13 +95,14 @@ namespace CompuScan_MES_Client
                             else
                             {
                                 Console.WriteLine("NO DATA FOUND");
+                                S7.SetByteAt(transactWriteBuffer, 45, 1);
+                                S7.SetByteAt(transactWriteBuffer, 48, 99);
+                                int result3 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                Console.WriteLine("Write Result : " + result3 + "---------------------------------------");
                             }
                             
-
-                            
-
                             Thread.Sleep(50);
-                        }
+                        //}
                         break;
                     case 99:
                         Console.WriteLine("PLC Requested to stop communication... Sending final transaction to PLC.");
@@ -129,6 +130,7 @@ namespace CompuScan_MES_Client
 
                 if (readTransactionID != oldReadTransactionID)
                 {
+                    Console.WriteLine("Transaction ID : " + readTransactionID + "---------------------------------------");
                     oSignalTransactEvent.Set();
                     oldReadTransactionID = readTransactionID;
                 }
