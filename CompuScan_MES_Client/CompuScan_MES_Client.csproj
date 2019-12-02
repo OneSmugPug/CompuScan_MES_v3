@@ -49,6 +49,9 @@
     <Reference Include="FastMember, Version=1.3.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\FastMember.1.3.0\lib\net45\FastMember.dll</HintPath>
     </Reference>
+    <Reference Include="PubSub, Version=3.0.0.0, Culture=neutral, PublicKeyToken=fe4ede83ff72b2e0, processorArchitecture=MSIL">
+      <HintPath>..\packages\PubSub.4.0.0\lib\netstandard2.0\PubSub.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.IO.FileSystem.Primitives, Version=4.0.1.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -101,12 +104,19 @@
     <Compile Include="PLC_Threads.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Scan.cs">
+    <Compile Include="ScanFEM.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Scan.Designer.cs">
-      <DependentUpon>Scan.cs</DependentUpon>
+    <Compile Include="ScanFEM.Designer.cs">
+      <DependentUpon>ScanFEM.cs</DependentUpon>
     </Compile>
+    <Compile Include="ScanSkid.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="ScanSkid.Designer.cs">
+      <DependentUpon>ScanSkid.cs</DependentUpon>
+    </Compile>
+    <Compile Include="ScreenChangeObject.cs" />
     <Compile Include="Sharp7.cs" />
     <EmbeddedResource Include="AwaitPart.resx">
       <DependentUpon>AwaitPart.cs</DependentUpon>
@@ -130,8 +140,11 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
-    <EmbeddedResource Include="Scan.resx">
-      <DependentUpon>Scan.cs</DependentUpon>
+    <EmbeddedResource Include="ScanFEM.resx">
+      <DependentUpon>ScanFEM.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="ScanSkid.resx">
+      <DependentUpon>ScanSkid.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
