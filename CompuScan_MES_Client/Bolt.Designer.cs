@@ -34,8 +34,6 @@
             this.label3 = new System.Windows.Forms.Label();
             this.current_bolt = new System.Windows.Forms.Label();
             this.imageList_Bolt = new System.Windows.Forms.ImageList(this.components);
-            this.label2 = new System.Windows.Forms.Label();
-            this.txt_station_num = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // label1
@@ -84,36 +82,12 @@
             this.imageList_Bolt.ImageSize = new System.Drawing.Size(16, 16);
             this.imageList_Bolt.TransparentColor = System.Drawing.Color.Transparent;
             // 
-            // label2
-            // 
-            this.label2.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.label2.AutoSize = true;
-            this.label2.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label2.Location = new System.Drawing.Point(655, 9);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(124, 20);
-            this.label2.TabIndex = 7;
-            this.label2.Text = "Station Number:";
-            // 
-            // txt_station_num
-            // 
-            this.txt_station_num.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
-            this.txt_station_num.AutoSize = true;
-            this.txt_station_num.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txt_station_num.Location = new System.Drawing.Point(776, 9);
-            this.txt_station_num.Name = "txt_station_num";
-            this.txt_station_num.Size = new System.Drawing.Size(27, 20);
-            this.txt_station_num.TabIndex = 8;
-            this.txt_station_num.Text = "##";
-            // 
             // Bolt
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.LightGray;
             this.ClientSize = new System.Drawing.Size(812, 598);
-            this.Controls.Add(this.txt_station_num);
-            this.Controls.Add(this.label2);
             this.Controls.Add(this.total_bolt);
             this.Controls.Add(this.label3);
             this.Controls.Add(this.current_bolt);
@@ -135,7 +109,5 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label current_bolt;
         private System.Windows.Forms.ImageList imageList_Bolt;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.Label txt_station_num;
     }
 }

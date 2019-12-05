@@ -1,4 +1,5 @@
 ﻿using Sharp7;
+using PubSub;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -16,6 +17,8 @@ namespace CompuScan_MES_Client
     public partial class MainPage : Form
     {
         #region [Objects and Variables]
+        Hub hub = Hub.Default;
+
         private S7Client 
             usersClient = new S7Client(),
             oldUserClient = new S7Client(),
@@ -34,7 +37,8 @@ namespace CompuScan_MES_Client
             isConnected = false,
             stationSet = false,
             hasRestarted,
-            changeScreen = false;
+            changeScreen = false,
+            hasChanged = false;
 
 
         private ManualResetEvent
@@ -44,6 +48,8 @@ namespace CompuScan_MES_Client
         private DataTable dt;
         private Form curForm;
         private int oldStepNum = -1;
+
+        private string stationID;
         #endregion
 
         #region [Form Load]
@@ -56,23 +62,20 @@ namespace CompuScan_MES_Client
         {
             hasRestarted = true;
 
+            stationID = "31";
+            //ObtainStationID();
+
             EstablishConnection();
 
-            //main_Panel.Controls.Clear();
-            //Pick frmAwait = new Pick(10,31);
-            ////frmAwait.SetS7Client(client);
-            //curForm = frmAwait;
-            //curForm.TopLevel = false;
-            //curForm.TopMost = true;
-            //curForm.Dock = DockStyle.Fill;
-            //main_Panel.Controls.Add(curForm);
-            //curForm.Show();
+            StartSequence();
+            
+            hub.Publish(new ScreenChangeObject("0"));
 
             if (isConnected)
             {
-                Thread readSeq = new Thread(ReadSeqDB);
-                readSeq.IsBackground = true;
-                readSeq.Start();
+                //Thread readSeq = new Thread(ReadSeqDB);
+                //readSeq.IsBackground = true;
+                //readSeq.Start();
 
                 Thread readUser = new Thread(ReadUserDB);
                 readUser.IsBackground = true;
@@ -82,9 +85,9 @@ namespace CompuScan_MES_Client
                 rfidThread.IsBackground = true;
                 rfidThread.Start();
 
-                Thread sequenceThread = new Thread(new ThreadStart(StartSequence));
-                sequenceThread.IsBackground = true;
-                sequenceThread.Start();
+                //Thread sequenceThread = new Thread(new ThreadStart(StartSequence));
+                //sequenceThread.IsBackground = true;
+                //sequenceThread.Start();
             }
         }
         #endregion
@@ -108,25 +111,13 @@ namespace CompuScan_MES_Client
         #region [Sequence Handling]
         private void StartSequence()
         {
-            while (isConnected)
+            hub.Subscribe<ScreenChangeObject>(this, obj =>
             {
-                oSignalSeqEvent.WaitOne();
-                oSignalSeqEvent.Reset();
-
-                //stationNum = S7.GetIntAt(stepReadBuffer, 2);
-
-                //this.Invoke((MethodInvoker)delegate
-                //{
-                //    lblStationNum.Text = "STN: " + stationNum;
-                //});
-
-                stepNum = S7.GetIntAt(stepReadBuffer, 4);
-                stepData = S7.GetIntAt(stepReadBuffer, 6);
-
-                switch (stepNum)
+                switch (obj.GetScreenNum())
                 {
                     // Await part
-                    case 0:
+                    case "0":
+                        Console.WriteLine("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
@@ -145,7 +136,7 @@ namespace CompuScan_MES_Client
                             main_Panel.Controls.Clear();
                         }
 
-                        AwaitPart frmAwait = new AwaitPart();
+                        AwaitPart frmAwait = new AwaitPart(stationID);
                         frmAwait.Owner = this;
                         frmAwait.SetLabel(lbl_SkidID);
 
@@ -166,10 +157,11 @@ namespace CompuScan_MES_Client
                         {
                             main_Panel.Controls.Add(curForm);
                             curForm.Show();
-                        }                      
+                        }
                         break;
-                    // Scan part
-                    case 1:
+                    // Scan Skid
+                    case "1":
+                        Console.WriteLine("1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111");
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
@@ -188,9 +180,9 @@ namespace CompuScan_MES_Client
                             main_Panel.Controls.Clear();
                         }
 
-                        Scan frmScan = new Scan(stationNum);
+                        ScanSkid frmScanSkid = new ScanSkid(stationID);
 
-                        curForm = frmScan;
+                        curForm = frmScanSkid;
                         curForm.TopLevel = false;
                         curForm.TopMost = true;
                         curForm.Dock = DockStyle.Fill;
@@ -209,8 +201,52 @@ namespace CompuScan_MES_Client
                             curForm.Show();
                         }
                         break;
-                    // Pick part
-                    case 2:
+                    // Scan FEM
+                    case "2":
+                        Console.WriteLine("2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222");
+                        if (main_Panel.InvokeRequired)
+                        {
+                            main_Panel.Invoke((MethodInvoker)delegate
+                            {
+                                if (curForm != null)
+                                    curForm.Close();                             
+                            });
+
+                            main_Panel.Controls.Clear();
+                        }
+                        else
+                        {
+                            if (curForm != null)
+                                curForm.Close();
+
+                            main_Panel.Controls.Clear();
+                        }
+
+                        ScanFEM frmScanFEM = new ScanFEM(stationID);
+
+                        curForm = frmScanFEM;
+                        curForm.TopLevel = false;
+                        curForm.TopMost = true;
+                        curForm.Dock = DockStyle.Fill;
+
+                        if (main_Panel.InvokeRequired)
+                        {
+                            main_Panel.Invoke((MethodInvoker)delegate
+                            {
+                                main_Panel.Controls.Add(curForm);
+                                curForm.Show();
+                            });
+                        }
+                        else
+                        {
+                            main_Panel.Controls.Add(curForm);
+                            curForm.Show();
+                        }
+                        break;
+                    // Pick
+                    case "3":
+                        Console.WriteLine("3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333");
+
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
@@ -229,7 +265,7 @@ namespace CompuScan_MES_Client
                             main_Panel.Controls.Clear();
                         }
 
-                        Pick frmPick = new Pick(stepData, stationNum);
+                        Pick frmPick = new Pick(Int32.Parse(obj.GetCount()), stationID, obj.GetSequence(), obj.GetPos());
 
                         curForm = frmPick;
                         curForm.TopLevel = false;
@@ -251,7 +287,7 @@ namespace CompuScan_MES_Client
                         }
                         break;
                     // Bolt
-                    case 3:
+                    case "4":
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
@@ -270,7 +306,7 @@ namespace CompuScan_MES_Client
                             main_Panel.Controls.Clear();
                         }
 
-                        Bolt frmBolt = new Bolt(stepData, stationNum);
+                        Bolt frmBolt = new Bolt(Int32.Parse(obj.GetCount()), stationID, obj.GetSequence(), obj.GetPos());
 
                         curForm = frmBolt;
                         curForm.TopLevel = false;
@@ -292,7 +328,7 @@ namespace CompuScan_MES_Client
                         }
                         break;
                     // Sequence Done
-                    case 99:
+                    case "99":
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
@@ -323,8 +359,7 @@ namespace CompuScan_MES_Client
                     default:
                         break;
                 }
-                Thread.Sleep(50);
-            }
+            });
         }       
         #endregion
 
@@ -451,6 +486,18 @@ namespace CompuScan_MES_Client
         }
         #endregion
 
+        #region [Obtain Station ID]
+        private void ObtainStationID()
+        {
+            string ip = "";
+            // get the local ip
+            string[] arr = ip.Split('.');
+            ip = arr[3];
+            arr = ip.Split();
+            stationID = arr[0] + arr[2];
+        }
+        #endregion
+
         #region [PLC DB Read Threads]
         private void ReadSeqDB()
         {
@@ -458,8 +505,9 @@ namespace CompuScan_MES_Client
             {
                 sequenceClient.DBRead(3102, 0, stepReadBuffer.Length, stepReadBuffer);
                 changeScreen = S7.GetBitAt(stepReadBuffer, 0, 0);
-                //stepNum = S7.GetIntAt(stepReadBuffer, 4);
                 stationNum = S7.GetIntAt(stepReadBuffer, 2);
+
+                //Console.WriteLine(changeScreen);
 
                 if (!stationSet)
                 {
@@ -476,20 +524,18 @@ namespace CompuScan_MES_Client
 
                 if (hasRestarted)
                 {
-                    //palletClient.DBRead(3107, 0, palletReadBuffer.Length, palletReadBuffer);//1110
-                    //skidPresent = S7.GetBitAt(palletReadBuffer, 0, 0);
-
                     oSignalSeqEvent.Set();
                     hasRestarted = false;
                 }
-                else if (changeScreen)
+                else if (changeScreen && !hasChanged)
+                {
+                    hasChanged = true;
                     oSignalSeqEvent.Set();
-
-                //if (stepNum != oldStepNum)
-                //{
-                //    oSignalSeqEvent.Set();
-                //    oldStepNum = stepNum;
-                //}
+                }
+                else if (!changeScreen && hasChanged)
+                {
+                    hasChanged = false;
+                }
 
                 Thread.Sleep(50);
             }
