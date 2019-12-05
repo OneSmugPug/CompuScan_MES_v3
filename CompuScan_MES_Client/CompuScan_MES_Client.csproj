@@ -118,6 +118,7 @@
     </Compile>
     <Compile Include="ScreenChangeObject.cs" />
     <Compile Include="Sharp7.cs" />
+    <Compile Include="StringExtentions.cs" />
     <EmbeddedResource Include="AwaitPart.resx">
       <DependentUpon>AwaitPart.cs</DependentUpon>
     </EmbeddedResource>

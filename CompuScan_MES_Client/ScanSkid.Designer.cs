@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.label2 = new System.Windows.Forms.Label();
-            this.scan_txt = new System.Windows.Forms.TextBox();
+            this.skid_txt = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
@@ -44,14 +44,14 @@
             this.label2.TabIndex = 5;
             this.label2.Text = "Scan Info:";
             // 
-            // scan_txt
+            // skid_txt
             // 
-            this.scan_txt.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.scan_txt.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.scan_txt.Location = new System.Drawing.Point(303, 525);
-            this.scan_txt.Name = "scan_txt";
-            this.scan_txt.Size = new System.Drawing.Size(455, 29);
-            this.scan_txt.TabIndex = 4;
+            this.skid_txt.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
+            this.skid_txt.Font = new System.Drawing.Font("Microsoft Sans Serif", 14F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.skid_txt.Location = new System.Drawing.Point(303, 525);
+            this.skid_txt.Name = "skid_txt";
+            this.skid_txt.Size = new System.Drawing.Size(455, 29);
+            this.skid_txt.TabIndex = 4;
             // 
             // label1
             // 
@@ -73,11 +73,13 @@
             this.BackColor = System.Drawing.Color.LightGray;
             this.ClientSize = new System.Drawing.Size(812, 598);
             this.Controls.Add(this.label2);
-            this.Controls.Add(this.scan_txt);
+            this.Controls.Add(this.skid_txt);
             this.Controls.Add(this.label1);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Name = "ScanSkid";
             this.Text = "ScanSkid";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ScanSkid_FormClosing);
+            this.Load += new System.EventHandler(this.ScanSkid_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -86,7 +88,7 @@
         #endregion
 
         private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.TextBox scan_txt;
+        private System.Windows.Forms.TextBox skid_txt;
         private System.Windows.Forms.Label label1;
     }
 }

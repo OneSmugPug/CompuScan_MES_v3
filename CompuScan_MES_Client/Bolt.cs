@@ -22,35 +22,52 @@ namespace CompuScan_MES_Client
             transactClient = new S7Client();
         private bool
             hasReadOne = false,
-            isConnected = false;
+            isConnected = false,
+            handshakeCleared = false;
+
         private int
             oldReadTransactionID = 0;
+
         public static byte[]
             transactReadBuffer = new byte[296],
             transactWriteBuffer = new byte[296];
+
         private ManualResetEvent
             oSignalTransactEvent = new ManualResetEvent(false);
+
         private int 
             curBoltNum = 0,
             picBoxY = 12,
             picBoxX = 12,
-            boltNum;
-        private Dictionary<string, PictureBox> picBoxes;
-        private string stationID;
+            boltNum,
+            sequencePos;
 
-        public Bolt(int boltNum, string stationID)
+        private Dictionary<string, PictureBox> picBoxes;
+
+        private string 
+            stationID,
+            entireSequence;
+
+        private Thread readTransact,
+            handshakeThr;
+
+        private string[]
+            subSequences,
+            currentSequence,
+            partNumbers;
+
+        public Bolt(int boltNum, string stationID, string entireSequence, int sequencePos)
         {
             InitializeComponent();
             this.boltNum = boltNum;
             this.stationID = stationID;
+            this.entireSequence = entireSequence;
+            this.sequencePos = sequencePos;
             picBoxes = new Dictionary<string, PictureBox>();
         }
 
         private void Bolt_Load(object sender, EventArgs e)
         {
-            hub.Publish(0);
-
-
             EstablishConnection();
             
             if (isConnected)
@@ -59,11 +76,11 @@ namespace CompuScan_MES_Client
                 total_bolt.Text = boltNum.ToString();
                 PopulateBoltImages();
 
-                Thread readTransact = new Thread(ReadTransactionDB);
+                readTransact = new Thread(ReadTransactionDB);
                 readTransact.IsBackground = true;
                 readTransact.Start();
 
-                Thread handshakeThr = new Thread(Handshake);
+                handshakeThr = new Thread(Handshake);
                 handshakeThr.IsBackground = true;
                 handshakeThr.Start();
             }
@@ -84,17 +101,7 @@ namespace CompuScan_MES_Client
         #region [Handshake Structure]
         private void Handshake()
         {
-            if (isConnected)
-            {
-                S7.SetByteAt(transactWriteBuffer, 45, 1);
-                S7.SetStringAt(transactWriteBuffer, 96, 200, ((short)palletNum).ToString()); // Send Equipment ID *** bolting tool
-                int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID : 1" +
-                                  "\nEquipment ID : " + equipmentID +
-                                  "\nPLC Write Result : " + result1 +
-                                  "\n-------------------------");
-            }
+            
 
             while (isConnected)
             {
@@ -104,21 +111,35 @@ namespace CompuScan_MES_Client
 
                 switch (readTransactionID)
                 {
-                    case 1:
+                    case 2:
 
                         // DO WORK
+
+                        S7.SetByteAt(transactWriteBuffer, 45, 99);
+                        int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
 
                         Thread.Sleep(50);
                         
                         break;
-                    case 99:
-                        Console.WriteLine("PLC Requested to stop communication... Sending final transaction to PLC.");
-                        S7.SetByteAt(transactWriteBuffer, 45, 100);
-                        int result4 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                        Console.WriteLine("Write Result : " + result4 + "---------------------------------------");
-                        hasReadOne = false;
-
-                        Thread.Sleep(50);
+                    case 100:
+                        Console.WriteLine("-------------------------" +
+                                  "\nTransaction ID : " + readTransactionID +
+                                  "\nResult : Handshake done... Starting next screen." +
+                                  "\n-------------------------");
+                        
+                        subSequences = entireSequence.Split('-');
+                        if ((sequencePos + 1) >= subSequences.Length)
+                        {
+                            hub.PublishAsync(new ScreenChangeObject("0"));
+                            this.Close();
+                        }
+                        else
+                        {
+                            string[] nextStep = subSequences[sequencePos + 1].Split(',');
+                            hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, (sequencePos + 1)));
+                            this.Close();
+                        }
+                        
                         break;
                     default:
                         break;
@@ -135,7 +156,23 @@ namespace CompuScan_MES_Client
                 transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
                 readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
 
-                if (readTransactionID != oldReadTransactionID)
+                if (readTransactionID == 0 && !handshakeCleared)
+                {
+                    handshakeCleared = true;
+                    if (isConnected)
+                    {
+                        S7.SetByteAt(transactWriteBuffer, 45, 1);
+                        S7.SetByteAt(transactWriteBuffer, 96, 60); // Send Equipment ID *** bolting tool
+                        int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                        Console.WriteLine("-------------------------" +
+                                          "\nTransaction ID : 1" +
+                                          "\nEquipment ID : " + equipmentID +
+                                          "\nPLC Write Result : " + result1 +
+                                          "\n-------------------------");
+                    }
+                }
+
+                if ((readTransactionID != oldReadTransactionID) && handshakeCleared)
                 {
                     Console.WriteLine("Transaction ID : " + readTransactionID + "---------------------------------------");
                     oSignalTransactEvent.Set();
@@ -214,6 +251,10 @@ namespace CompuScan_MES_Client
         #region [Populate Bolt Images]
         private void PopulateBoltImages()
         {
+            //subSequences = entireSequence.Split('-');
+            //currentSequence = subSequences[sequencePos].Split(',');
+            //partNumbers = String.Join(" ", currentSequence[2].SplitIntoParts(3)).Split(' ');
+
             for (int i = 0; i < boltNum; i++)
             {
                 PictureBox picBox = new PictureBox();

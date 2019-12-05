@@ -18,28 +18,50 @@ namespace CompuScan_MES_Client
         Hub hub = Hub.Default;
         private S7Client
             transactClient = new S7Client();
+
         private bool
             hasReadOne = false,
-            isConnected = false;
+            isConnected = false,
+            handshakeCleared = false;
+
         private int
             oldReadTransactionID = 0;
+
         public static byte[]
             transactReadBuffer = new byte[296],
             transactWriteBuffer = new byte[296];
+
         private ManualResetEvent
             oSignalTransactEvent = new ManualResetEvent(false);
+
         private int
             curPickNum = 0,
             pickNum,
-            txtBoxY = 38;
-        private Dictionary<string,TextBox> txtBoxes;
-        private string stationID;
+            txtBoxY = 38,
+            sequencePos;
 
-        public Pick(int pickNum, string stationID)
+        private Dictionary<string,TextBox> txtBoxes;
+
+        private string 
+            stationID,
+            entireSequence;
+
+        private Thread readTransact,
+            handshakeThr;
+
+        private string[] 
+            subSequences,
+            currentSequence,
+            partNumbers;
+
+
+        public Pick(int pickNum, string stationID, string entireSequence, int sequencePos)
         {
             InitializeComponent();
             this.pickNum = pickNum;
             this.stationID = stationID;
+            this.entireSequence = entireSequence;
+            this.sequencePos = sequencePos;
             current_pick.Text = curPickNum.ToString();
             total_pick.Text = pickNum.ToString();
             txtBoxes = new Dictionary<string, TextBox>();
@@ -47,17 +69,17 @@ namespace CompuScan_MES_Client
 
         private void Pick_Load(object sender, EventArgs e)
         {
-            //EstablishConnection();
+            EstablishConnection();
 
             if (isConnected)
             {
                 PopulatePickTextBoxes();
 
-                Thread readTransact = new Thread(ReadTransactionDB);
+                readTransact = new Thread(ReadTransactionDB);
                 readTransact.IsBackground = true;
                 readTransact.Start();
 
-                Thread handshakeThr = new Thread(Handshake);
+                handshakeThr = new Thread(Handshake);
                 handshakeThr.IsBackground = true;
                 handshakeThr.Start();
             }
@@ -77,17 +99,7 @@ namespace CompuScan_MES_Client
         #region [Handshake Structure]
         private void Handshake()
         {
-            if (isConnected)
-            {
-                S7.SetByteAt(transactWriteBuffer, 45, 1);
-                S7.SetStringAt(transactWriteBuffer, 96, 200, ((short)palletNum).ToString()); // Send Equipment ID *** small label scanner
-                int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID : 1" +
-                                  "\nEquipment ID : " + equipmentID +
-                                  "\nPLC Write Result : " + result1 +
-                                  "\n-------------------------");
-            }
+            
 
             int count = 1;
             string scanData;
@@ -113,12 +125,14 @@ namespace CompuScan_MES_Client
                                 TextBox temp;
                                 txtBoxes.TryGetValue("pickedBox" + count, out temp);
                                 count++;
+                                curPickNum++;
+                                current_pick.Text = curPickNum.ToString();
                                 temp.Text = scanData.ToString();
                             });
                         
                             // LOG TO DATABASE
                         
-                            S7.SetByteAt(transactWriteBuffer, 45, 2);
+                            S7.SetByteAt(transactWriteBuffer, 45, 3);
                             int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                             Console.WriteLine("Write Result : " + result2 + "---------------------------------------");
                         }
@@ -140,6 +154,14 @@ namespace CompuScan_MES_Client
                     case 18:
                     case 20:
                     case 22:
+                        curPickNum++;
+                        if (curPickNum > pickNum)
+                        {
+                            S7.SetByteAt(transactWriteBuffer, 45, 99);
+                            int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                            break;
+                        }
+
                         scanData = S7.GetStringAt(transactReadBuffer, 96).ToString();
                         Console.WriteLine(scanData);
 
@@ -150,6 +172,7 @@ namespace CompuScan_MES_Client
                                 TextBox temp;
                                 txtBoxes.TryGetValue("pickedBox" + count, out temp);
                                 count++;
+                                current_pick.Text = curPickNum.ToString();
                                 temp.Text = scanData.ToString();
                             });
 
@@ -158,7 +181,6 @@ namespace CompuScan_MES_Client
                             S7.SetByteAt(transactWriteBuffer, 45, (byte)(readTransactionID + 1));
                             int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                             Console.WriteLine("Write Result : " + result2 + "---------------------------------------");
-                            hasReadOne = true;
                         }
                         else
                         {
@@ -168,13 +190,21 @@ namespace CompuScan_MES_Client
                         Thread.Sleep(50);
                         break;
                     case 100:
-                        Console.WriteLine("PLC Requested to stop communication...");
-                        S7.SetByteAt(transactWriteBuffer, 45, 100);
-                        int result4 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                        Console.WriteLine("Write Result : " + result4 + "---------------------------------------");
-                        hasReadOne = false;
-
-                        Thread.Sleep(50);
+                        Console.WriteLine("-------------------------" +
+                                  "\nTransaction ID : " + readTransactionID +
+                                  "\nResult : Handshake done... Starting next screen." +
+                                  "\n-------------------------");
+                        if ((sequencePos + 1) >= subSequences.Length)
+                        {
+                            hub.PublishAsync(new ScreenChangeObject("0"));
+                            this.Close();
+                        }
+                        else
+                        {
+                            string[] nextStep = subSequences[sequencePos + 1].Split(',');
+                            hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, (sequencePos + 1)));
+                            this.Close();
+                        }
                         break;
                     default:
                         break;
@@ -191,11 +221,25 @@ namespace CompuScan_MES_Client
                 transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
                 readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
 
-                //Console.WriteLine(readTransactionID);
-
-                if (readTransactionID != oldReadTransactionID)
+                if (readTransactionID == 0 && !handshakeCleared)
                 {
-                    Console.WriteLine("Transaction ID : " + readTransactionID + "---------------------------------------");
+                    handshakeCleared = true;
+                    if (isConnected)
+                    {
+                        S7.SetByteAt(transactWriteBuffer, 45, 1);
+                        S7.SetByteAt(transactWriteBuffer, 94, 31); // Send Equipment ID *** small label scanner
+                        int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                        Console.WriteLine("-------------------------" +
+                                          "\nTransaction ID : 1" +
+                                          "\nEquipment ID 31 : " +
+                                          "\nPLC Write Result : " + result1 +
+                                          "\n-------------------------");
+                    }
+                }
+
+                if ((readTransactionID != oldReadTransactionID) && handshakeCleared)
+                {
+                    Console.WriteLine("Transaction ID : " + readTransactionID);
                     oSignalTransactEvent.Set();
                     oldReadTransactionID = readTransactionID;
                 }
@@ -272,13 +316,17 @@ namespace CompuScan_MES_Client
         #region [Populate Panel with Textboxes]
         private void PopulatePickTextBoxes()
         {
+            subSequences = entireSequence.Split('-');
+            currentSequence = subSequences[sequencePos].Split(',');
+            partNumbers = String.Join(" ", currentSequence[2].SplitIntoParts(3)).Split(' ');
+
             for (int i = 0; i < pickNum; i++)
             {
                 TextBox txtReq = new TextBox();
                 txtReq.Name = "reqBox" + (i + 1);
                 txtReq.Location = new Point(lbl_Req.Location.X - 6, lbl_Req.Location.Y + txtBoxY);
                 txtReq.Size = new Size(100, 20);
-                txtReq.Text = txtReq.Name;
+                txtReq.Text = partNumbers[i];
                 TextBox txtPicked = new TextBox();
                 txtPicked.Name = "pickedBox" + (i + 1);
                 txtPicked.Location = new Point(lbl_picked.Location.X - 17, lbl_picked.Location.Y + txtBoxY);

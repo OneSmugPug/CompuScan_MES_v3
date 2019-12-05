@@ -21,7 +21,8 @@ namespace CompuScan_MES_Client
             transactClient = new S7Client();
         private bool
             hasReadOne = false,
-            isConnected = false;
+            isConnected = false,
+            handshakeCleared = false;
         private int
             oldReadTransactionID = 0,
             numOfProcesses;
@@ -30,6 +31,10 @@ namespace CompuScan_MES_Client
             transactWriteBuffer = new byte[402];
         private ManualResetEvent
             oSignalTransactEvent = new ManualResetEvent(false);
+
+        private Thread readTransact,
+            handshakeThr;
+
         private string 
             stationID,
             entireSequence;
@@ -42,21 +47,20 @@ namespace CompuScan_MES_Client
             this.stationID = stationID;
         }
 
-        private void Scan_Load(object sender, EventArgs e)
+        private void ScanFEM_Load(object sender, EventArgs e)
         {
             EstablishConnection();
-
+            //Thread.Sleep(100);
             if (isConnected)
             {
-                Thread readTransact = new Thread(ReadTransactionDB);
+                readTransact = new Thread(ReadTransactionDB);
                 readTransact.IsBackground = true;
                 readTransact.Start();
 
-                Thread handshakeThr = new Thread(Handshake);
+                handshakeThr = new Thread(Handshake);
                 handshakeThr.IsBackground = true;
                 handshakeThr.Start();
             }
-
         }
 
         #region [Establish Connection]
@@ -73,18 +77,6 @@ namespace CompuScan_MES_Client
         #region [Handshake Structure]
         private void Handshake()
         {
-            if (isConnected)
-            {
-                S7.SetByteAt(transactWriteBuffer, 45, 1);
-                S7.SetStringAt(transactWriteBuffer, 96, 200, ((short)palletNum).ToString()); // Send Equipment ID *** HANDHELD SCANNER
-                int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID : 1" +
-                                  "\nEquipment ID : " + equipmentID +
-                                  "\nPLC Write Result : " + result1 +
-                                  "\n-------------------------");
-            }
-
             while (isConnected)
             {
                 oSignalTransactEvent.WaitOne();
@@ -93,16 +85,16 @@ namespace CompuScan_MES_Client
                 switch (readTransactionID)
                 {
                     case 2:
-                        string modelVar = S7.GetStringAt(transactReadBuffer, 96).ToString();
-                        Console.WriteLine(modelVar);
+                        string FEMLabel = S7.GetStringAt(transactReadBuffer, 96).ToString();
+                        Console.WriteLine(FEMLabel);
 
-                        arr = modelVar.Split(',');
+                        arr = FEMLabel.Split(',');
 
-                        if (!modelVar.Equals(""))
+                        if (!FEMLabel.Equals(""))
                         {
                             this.Invoke((MethodInvoker)delegate
                             {
-                                scan_txt.Text = modelVar.ToString();
+                                FEM_txt.Text = FEMLabel.ToString();
                             });
 
                             using (SqlConnection conn = DBUtils.GetMainDBConnection())
@@ -130,7 +122,7 @@ namespace CompuScan_MES_Client
                                 S7.SetStringAt(transactWriteBuffer, 96, 200, numOfProcesses.ToString());
                                 int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                                 Console.WriteLine("-------------------------" +
-                                      "\nTransaction ID : " + readTransactionID +
+                                      "\nTransaction ID : 99" + 
                                       "\nSequence Number : " + sequenceNum +
                                       "\nPLC Write Result : " + result1 +
                                       "\n-------------------------");
@@ -148,14 +140,14 @@ namespace CompuScan_MES_Client
                                       "\n-------------------------");
                             }
                         }
-                        else
+                        else // Did not receive any data from plc
                         {
                             S7.SetByteAt(transactWriteBuffer, 45, 1);
                             S7.SetByteAt(transactWriteBuffer, 48, 98);
                             int result3 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                             Console.WriteLine("-------------------------" +
                                       "\nTransaction ID : " + readTransactionID +
-                                      "\nResult : No data recieved from PLC." +
+                                      "\nResult : No data received from PLC." +
                                       "\nErrorcode : 98" +
                                       "\nPLC Write Result : " + result3 +
                                       "\n-------------------------");
@@ -169,7 +161,8 @@ namespace CompuScan_MES_Client
                                   "\nResult : Handshake done... Starting next screen." +
                                   "\n-------------------------");
                         string[] nextStep = arr[0].Split(',');
-                        hub.Publish(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, 1));
+                        hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, 0));
+                        this.Close();
                         break;
                     default:
                         break;
@@ -186,9 +179,25 @@ namespace CompuScan_MES_Client
                 transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
                 readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
 
-                if ((readTransactionID != oldReadTransactionID) && (readTransactionID != 0))
+                if (readTransactionID == 0 && !handshakeCleared)
                 {
-                    Console.WriteLine("Transaction ID : " + readTransactionID + "---------------------------------------");
+                    handshakeCleared = true;
+                    if (isConnected)
+                    {
+                        S7.SetByteAt(transactWriteBuffer, 45, 1);
+                        S7.SetByteAt(transactWriteBuffer, 94, 20); // Send Equipment ID *** HANDHELD SCANNER
+                        int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                        Console.WriteLine("-------------------------" +
+                                          "\nTransaction ID : 1" +
+                                          "\nEquipment ID : 20" +
+                                          "\nPLC Write Result : " + result1 +
+                                          "\n-------------------------");
+                    }
+                }
+
+                if ((readTransactionID != oldReadTransactionID) && handshakeCleared)
+                {
+                    Console.WriteLine("Transaction ID : " + readTransactionID);
                     oSignalTransactEvent.Set();
                     oldReadTransactionID = readTransactionID;
                 }
@@ -256,6 +265,9 @@ namespace CompuScan_MES_Client
         public string userName { get; set; }
         public int equipmentID { get; set; }
         public string productionData { get; set; }
+
+        
+
         public bool skidPresent { get; set; }
         public bool addPallet { get; set; }
         public int palletNum { get; set; }

@@ -65,7 +65,7 @@ namespace CompuScan_MES_Client
             stationID = "31";
             //ObtainStationID();
 
-            //EstablishConnection();
+            EstablishConnection();
 
             StartSequence();
             
@@ -73,9 +73,9 @@ namespace CompuScan_MES_Client
 
             if (isConnected)
             {
-                Thread readSeq = new Thread(ReadSeqDB);
-                readSeq.IsBackground = true;
-                readSeq.Start();
+                //Thread readSeq = new Thread(ReadSeqDB);
+                //readSeq.IsBackground = true;
+                //readSeq.Start();
 
                 Thread readUser = new Thread(ReadUserDB);
                 readUser.IsBackground = true;
@@ -85,9 +85,9 @@ namespace CompuScan_MES_Client
                 rfidThread.IsBackground = true;
                 rfidThread.Start();
 
-                Thread sequenceThread = new Thread(new ThreadStart(StartSequence));
-                sequenceThread.IsBackground = true;
-                sequenceThread.Start();
+                //Thread sequenceThread = new Thread(new ThreadStart(StartSequence));
+                //sequenceThread.IsBackground = true;
+                //sequenceThread.Start();
             }
         }
         #endregion
@@ -117,6 +117,7 @@ namespace CompuScan_MES_Client
                 {
                     // Await part
                     case "0":
+                        Console.WriteLine("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
@@ -160,6 +161,7 @@ namespace CompuScan_MES_Client
                         break;
                     // Scan Skid
                     case "1":
+                        Console.WriteLine("1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111");
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
@@ -201,15 +203,16 @@ namespace CompuScan_MES_Client
                         break;
                     // Scan FEM
                     case "2":
+                        Console.WriteLine("2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222");
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
                             {
                                 if (curForm != null)
-                                    curForm.Close();
-
-                                main_Panel.Controls.Clear();
+                                    curForm.Close();                             
                             });
+
+                            main_Panel.Controls.Clear();
                         }
                         else
                         {
@@ -242,6 +245,8 @@ namespace CompuScan_MES_Client
                         break;
                     // Pick
                     case "3":
+                        Console.WriteLine("3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333");
+
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
@@ -260,7 +265,7 @@ namespace CompuScan_MES_Client
                             main_Panel.Controls.Clear();
                         }
 
-                        Pick frmPick = new Pick(Int32.Parse(obj.GetCount()), stationID);
+                        Pick frmPick = new Pick(Int32.Parse(obj.GetCount()), stationID, obj.GetSequence(), obj.GetPos());
 
                         curForm = frmPick;
                         curForm.TopLevel = false;
@@ -301,7 +306,7 @@ namespace CompuScan_MES_Client
                             main_Panel.Controls.Clear();
                         }
 
-                        Bolt frmBolt = new Bolt(Int32.Parse(obj.GetCount()), stationID);
+                        Bolt frmBolt = new Bolt(Int32.Parse(obj.GetCount()), stationID, obj.GetSequence(), obj.GetPos());
 
                         curForm = frmBolt;
                         curForm.TopLevel = false;
