@@ -178,33 +178,36 @@ namespace CompuScan_MES_Main
         }
         #endregion
 
-        #region [Variant Manager Button]
-        private void Btn_MP_VM_Click(object sender, EventArgs e)
+        #region [Sequence Manager Button]
+        private void Btn_MP_SM_Click(object sender, EventArgs e)
         {
             main_Panel.Controls.Clear();
-            VariantManager frmVM = new VariantManager();
-            frmVM.SetPLCThread(threadUtil);
+
+            SeqManager frmVM = new SeqManager();
+
             curForm = frmVM;
             curForm.TopLevel = false;
             curForm.TopMost = true;
             curForm.Dock = DockStyle.Fill;
+
             main_Panel.Controls.Add(curForm);
+
             curForm.Show();
         }
 
-        private void Btn_MP_VM_MouseDown(object sender, MouseEventArgs e)
+        private void Btn_MP_SM_MouseDown(object sender, MouseEventArgs e)
         {
             btnVarManDown = true;
             (sender as Button).Invalidate();
         }
 
-        private void Btn_MP_VM_MouseUp(object sender, MouseEventArgs e)
+        private void Btn_MP_SM_MouseUp(object sender, MouseEventArgs e)
         {
             btnVarManDown = false;
             (sender as Button).Invalidate();
         }
 
-        private void Btn_MP_VM_Paint(object sender, PaintEventArgs e)
+        private void Btn_MP_SM_Paint(object sender, PaintEventArgs e)
         {
             if (btnVarManDown == false)
             {
@@ -328,7 +331,7 @@ namespace CompuScan_MES_Main
         #region [On Size Changed]
         private void MainPage_SizeChanged(object sender, EventArgs e)
         {
-            if (curForm is UserManagement)
+            if (curForm is UserManagement || curForm is SeqManager)
             {
                 main_Panel.Controls.Clear();
                 main_Panel.Controls.Add(curForm);
