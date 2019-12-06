@@ -16,41 +16,53 @@ namespace CompuScan_MES_Client
 {
     public partial class ScanFEM : Form
     {
+        #region [Variables]
         Hub hub = Hub.Default;
         private S7Client
             transactClient = new S7Client();
+
         private bool
             hasReadOne = false,
             isConnected = false,
             handshakeCleared = false;
+
         private int
             oldReadTransactionID = 0,
-            numOfProcesses;
+            numOfProcesses,
+            skidID;
+
         public static byte[]
             transactReadBuffer = new byte[402],
             transactWriteBuffer = new byte[402];
+
         private ManualResetEvent
             oSignalTransactEvent = new ManualResetEvent(false);
 
         private Thread readTransact,
             handshakeThr;
 
-        private string 
+        private string
             stationID,
-            entireSequence;
-        private string[] arr;
-        private DataTable dt;
+            entireSequence,
+            FEMLabel;
+            
 
-        public ScanFEM(string stationID)
+        private string[] FEMLabelParts;
+        private DataTable dt;
+        #endregion
+
+
+        public ScanFEM(string stationID, int skidID)
         {
             InitializeComponent();
             this.stationID = stationID;
+            this.skidID = skidID;
         }
 
         private void ScanFEM_Load(object sender, EventArgs e)
         {
             EstablishConnection();
-            //Thread.Sleep(100);
+
             if (isConnected)
             {
                 readTransact = new Thread(ReadTransactionDB);
@@ -71,103 +83,6 @@ namespace CompuScan_MES_Client
             if (transactClient.Connected)
                 isConnected = true;
             else MessageBox.Show("Connection to PLC on 192.168.1.1 unsuccessful.", "No PLC Connection", MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-        #endregion
-
-        #region [Handshake Structure]
-        private void Handshake()
-        {
-            while (isConnected)
-            {
-                oSignalTransactEvent.WaitOne();
-                oSignalTransactEvent.Reset();
-
-                switch (readTransactionID)
-                {
-                    case 2:
-                        string FEMLabel = S7.GetStringAt(transactReadBuffer, 96).ToString();
-                        Console.WriteLine(FEMLabel);
-
-                        arr = FEMLabel.Split(',');
-
-                        if (!FEMLabel.Equals(""))
-                        {
-                            this.Invoke((MethodInvoker)delegate
-                            {
-                                FEM_txt.Text = FEMLabel.ToString();
-                            });
-
-                            using (SqlConnection conn = DBUtils.GetMainDBConnection())
-                            {
-                                conn.Open();
-                                dt = new DataTable();
-                                SqlDataAdapter da = new SqlDataAdapter("SELECT [Processes], [Sequence] FROM Sequences WHERE [Model] = '" + arr[5] + "' AND [Variant] = '" + arr[6] + "'", conn);
-                                da.Fill(dt);
-                            }
-
-                            if (dt.Rows.Count > 0)
-                            {
-                                string sequenceNum = "1";
-                                foreach (DataRow row in dt.Rows)
-                                {
-                                    // step screen (scan...) , count , part numbers - '' , '' , '' -
-                                    // get the sequence from the row with part numbers
-                                    // get number of processes and send it to plc
-                                    arr = row["Sequence"].ToString().Split('-');
-                                    numOfProcesses = (int)row["Processes"];
-                                    entireSequence = row["Sequence"].ToString();
-                                }
-                                //currentSequenceStep = arr[0].Split(',');
-                                S7.SetByteAt(transactWriteBuffer, 45, 99);
-                                S7.SetStringAt(transactWriteBuffer, 96, 200, numOfProcesses.ToString());
-                                int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                                Console.WriteLine("-------------------------" +
-                                      "\nTransaction ID : 99" + 
-                                      "\nSequence Number : " + sequenceNum +
-                                      "\nPLC Write Result : " + result1 +
-                                      "\n-------------------------");
-                            }
-                            else // Did not find the model & variant in the database
-                            {
-                                S7.SetByteAt(transactWriteBuffer, 45, 1);
-                                S7.SetByteAt(transactWriteBuffer, 48, 99);
-                                int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                                Console.WriteLine("-------------------------" +
-                                      "\nTransaction ID : " + readTransactionID +
-                                      "\nResult : Did not find model/variant in database." +
-                                      "\nErrorcode : 99" +
-                                      "\nPLC Write Result : " + result2 +
-                                      "\n-------------------------");
-                            }
-                        }
-                        else // Did not receive any data from plc
-                        {
-                            S7.SetByteAt(transactWriteBuffer, 45, 1);
-                            S7.SetByteAt(transactWriteBuffer, 48, 98);
-                            int result3 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                            Console.WriteLine("-------------------------" +
-                                      "\nTransaction ID : " + readTransactionID +
-                                      "\nResult : No data received from PLC." +
-                                      "\nErrorcode : 98" +
-                                      "\nPLC Write Result : " + result3 +
-                                      "\n-------------------------");
-                        }
-                        
-                        Thread.Sleep(50);
-                        break;
-                    case 100:
-                        Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID : " + readTransactionID +
-                                  "\nResult : Handshake done... Starting next screen." +
-                                  "\n-------------------------");
-                        string[] nextStep = arr[0].Split(',');
-                        hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, 0));
-                        this.Close();
-                        break;
-                    default:
-                        break;
-                }
-            }
         }
         #endregion
 
@@ -207,51 +122,105 @@ namespace CompuScan_MES_Client
         }
         #endregion
 
-        #region [PLC DB Read/Write]
-        private void ReadAllValues()
+        #region [Handshake Structure]
+        private void Handshake()
         {
-            transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
-
-            lineID = S7.GetStringAt(transactReadBuffer, 0);
-
-            identifier = S7.GetStringAt(transactReadBuffer, 22);
-
-            identifierCount = S7.GetByteAt(transactReadBuffer, 44); // Number of entries in the database (Does not really need to read but write it to plc?)
-
-            readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
-
-            channelStatus = S7.GetByteAt(transactReadBuffer, 46);
-
-            stationStatus = S7.GetByteAt(transactReadBuffer, 47);
-
-            errorCode = S7.GetByteAt(transactReadBuffer, 48);
-
-            userName = S7.GetStringAt(transactReadBuffer, 50);
-
-            equipmentID = S7.GetByteAt(transactReadBuffer, 94);
-
-            productionData = S7.GetStringAt(transactReadBuffer, 96);
-        }
-
-        public void WriteBackToPLC()
-        {
-            //S7.SetStringAt(writeBuffer, 0, 20, lineID);
-            //S7.SetStringAt(writeBuffer, 22, 20, identifier);
-            //S7.SetByteAt(writeBuffer, 44, (byte)identifierCount);
-            S7.SetByteAt(transactWriteBuffer, 45, (byte)writeTransactionID);
-            //S7.SetByteAt(writeBuffer, 46, (byte)channelStatus);
-            //S7.SetByteAt(writeBuffer, 47, (byte)stationStatus);
-            //S7.SetByteAt(writeBuffer, 48, (byte)errorCode);
-            //S7.SetStringAt(writeBuffer, 50, 20, userName);
-            //S7.SetByteAt(writeBuffer, 94, (byte)equipmentID);
-            //S7.SetStringAt(writeBuffer, 96, 200, productionData);
-            int writeResult = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);//1111
-            if (writeResult == 0)
+            while (isConnected)
             {
-                Console.WriteLine("==> Successfully wrote to PLC");
+                oSignalTransactEvent.WaitOne();
+                oSignalTransactEvent.Reset();
+
+                switch (readTransactionID)
+                {
+                    case 2:
+                        FEMLabel = S7.GetStringAt(transactReadBuffer, 96).ToString();
+                        Console.WriteLine(FEMLabel);
+
+                        FEMLabelParts = FEMLabel.Split(',');
+
+                        if (!FEMLabel.Equals(""))
+                        {
+                            this.Invoke((MethodInvoker)delegate
+                            {
+                                FEM_txt.Text = FEMLabel.ToString();
+                            });
+
+                            using (SqlConnection conn = DBUtils.GetMainDBConnection())
+                            {
+                                conn.Open();
+                                dt = new DataTable();
+                                SqlDataAdapter da = new SqlDataAdapter("SELECT [Processes], [Sequence] FROM Sequences WHERE [Model] = '" + FEMLabelParts[5] + "' AND [Variant] = '" + FEMLabelParts[6] + "'", conn);
+                                da.Fill(dt);
+                            }
+
+                            if (dt.Rows.Count > 0)
+                            {
+                                string sequenceNum = "1";
+                                foreach (DataRow row in dt.Rows)
+                                {
+                                    FEMLabelParts = row["Sequence"].ToString().Split('-');
+                                    numOfProcesses = (int)row["Processes"];
+                                    entireSequence = row["Sequence"].ToString();
+                                }
+
+                                //currentSequenceStep = arr[0].Split(',');
+                                S7.SetByteAt(transactWriteBuffer, 45, 99);
+                                S7.SetStringAt(transactWriteBuffer, 96, 200, numOfProcesses.ToString());
+                                int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                Console.WriteLine("-------------------------" +
+                                      "\nTransaction ID : 99" + 
+                                      "\nSequence Number : " + sequenceNum +
+                                      "\nPLC Write Result : " + result1 +
+                                      "\n-------------------------");
+                            }
+                            else // Did not find the model & variant in the database
+                            {
+                                S7.SetByteAt(transactWriteBuffer, 45, 1);
+                                S7.SetByteAt(transactWriteBuffer, 48, 99);
+                                int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                Console.WriteLine("-------------------------" +
+                                      "\nTransaction ID : " + readTransactionID +
+                                      "\nResult : Did not find model/variant in database." +
+                                      "\nErrorcode : 99" +
+                                      "\nPLC Write Result : " + result2 +
+                                      "\n-------------------------");
+                            }
+                        }
+                        else // Did not receive any data from plc
+                        {
+                            S7.SetByteAt(transactWriteBuffer, 45, 1);
+                            S7.SetByteAt(transactWriteBuffer, 48, 98);
+                            int result3 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                            Console.WriteLine("-------------------------" +
+                                      "\nTransaction ID : " + readTransactionID +
+                                      "\nResult : No data received from PLC." +
+                                      "\nErrorcode : 98" +
+                                      "\nPLC Write Result : " + result3 +
+                                      "\n-------------------------");
+                        }
+                        
+                        Thread.Sleep(50);
+                        break;
+                    case 100:
+                        if (FEMLabelParts != null)
+                        {
+                            Console.WriteLine("-------------------------" +
+                                  "\nTransaction ID : " + readTransactionID +
+                                  "\nResult : Handshake done... Starting next screen." +
+                                  "\n-------------------------");
+                            string[] nextStep = FEMLabelParts[0].Split(',');
+                            hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, 0, skidID, FEMLabel));
+                            this.Close();
+                        }
+                        break;
+                    default:
+                        break;
+                }
             }
         }
         #endregion
+
+        
 
         #region [PLC Getters/Setters]
         public string lineID { get; set; }

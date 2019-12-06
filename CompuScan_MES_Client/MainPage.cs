@@ -73,10 +73,6 @@ namespace CompuScan_MES_Client
 
             if (isConnected)
             {
-                //Thread readSeq = new Thread(ReadSeqDB);
-                //readSeq.IsBackground = true;
-                //readSeq.Start();
-
                 Thread readUser = new Thread(ReadUserDB);
                 readUser.IsBackground = true;
                 readUser.Start();
@@ -84,10 +80,6 @@ namespace CompuScan_MES_Client
                 Thread rfidThread = new Thread(new ThreadStart(ReadRFID));
                 rfidThread.IsBackground = true;
                 rfidThread.Start();
-
-                //Thread sequenceThread = new Thread(new ThreadStart(StartSequence));
-                //sequenceThread.IsBackground = true;
-                //sequenceThread.Start();
             }
         }
         #endregion
@@ -117,7 +109,11 @@ namespace CompuScan_MES_Client
                 {
                     // Await part
                     case "0":
-                        Console.WriteLine("00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
+                        Console.WriteLine(
+                            "-------------------------" +
+                            "\nAwaiting Part Screen Called" +
+                            "\n-------------------------");
+
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
@@ -161,7 +157,11 @@ namespace CompuScan_MES_Client
                         break;
                     // Scan Skid
                     case "1":
-                        Console.WriteLine("1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111");
+                        Console.WriteLine(
+                            "-------------------------" +
+                            "\nScan Skid Screen Called" +
+                            "\n-------------------------");
+
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
@@ -181,6 +181,8 @@ namespace CompuScan_MES_Client
                         }
 
                         ScanSkid frmScanSkid = new ScanSkid(stationID);
+                        frmScanSkid.Owner = this;
+                        frmScanSkid.SetLabel(lbl_SkidID);
 
                         curForm = frmScanSkid;
                         curForm.TopLevel = false;
@@ -203,7 +205,11 @@ namespace CompuScan_MES_Client
                         break;
                     // Scan FEM
                     case "2":
-                        Console.WriteLine("2222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222222");
+                        Console.WriteLine(
+                            "-------------------------" +
+                            "\nScan FEM Label Screen Called" +
+                            "\n-------------------------");
+
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
@@ -222,7 +228,7 @@ namespace CompuScan_MES_Client
                             main_Panel.Controls.Clear();
                         }
 
-                        ScanFEM frmScanFEM = new ScanFEM(stationID);
+                        ScanFEM frmScanFEM = new ScanFEM(stationID, obj.GetSkidID());
 
                         curForm = frmScanFEM;
                         curForm.TopLevel = false;
@@ -245,7 +251,10 @@ namespace CompuScan_MES_Client
                         break;
                     // Pick
                     case "3":
-                        Console.WriteLine("3333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333");
+                        Console.WriteLine(
+                            "-------------------------" +
+                            "\nPick Parts Screen Called" +
+                            "\n-------------------------");
 
                         if (main_Panel.InvokeRequired)
                         {
@@ -265,7 +274,9 @@ namespace CompuScan_MES_Client
                             main_Panel.Controls.Clear();
                         }
 
-                        Pick frmPick = new Pick(Int32.Parse(obj.GetCount()), stationID, obj.GetSequence(), obj.GetPos());
+                        Pick frmPick = new Pick(Int32.Parse(obj.GetCount()), stationID, obj.GetSequence(), obj.GetPos(), obj.GetSkidID(), obj.GetFEMLabel());
+
+                        
 
                         curForm = frmPick;
                         curForm.TopLevel = false;
@@ -288,6 +299,11 @@ namespace CompuScan_MES_Client
                         break;
                     // Bolt
                     case "4":
+                        Console.WriteLine(
+                            "-------------------------" +
+                            "\nBolting Screen Called" +
+                            "\n-------------------------");
+
                         if (main_Panel.InvokeRequired)
                         {
                             main_Panel.Invoke((MethodInvoker)delegate
@@ -306,7 +322,7 @@ namespace CompuScan_MES_Client
                             main_Panel.Controls.Clear();
                         }
 
-                        Bolt frmBolt = new Bolt(Int32.Parse(obj.GetCount()), stationID, obj.GetSequence(), obj.GetPos());
+                        Bolt frmBolt = new Bolt(Int32.Parse(obj.GetCount()), stationID, obj.GetSequence(), obj.GetPos(), obj.GetSkidID(), obj.GetFEMLabel());
 
                         curForm = frmBolt;
                         curForm.TopLevel = false;

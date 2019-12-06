@@ -40,29 +40,33 @@ namespace CompuScan_MES_Client
             picBoxY = 12,
             picBoxX = 12,
             boltNum,
-            sequencePos;
+            sequencePos,
+            skidID,
+            maxNumAttempts;
 
         private Dictionary<string, PictureBox> picBoxes;
 
         private string 
             stationID,
-            entireSequence;
+            entireSequence,
+            FEMLabel;
 
         private Thread readTransact,
             handshakeThr;
 
         private string[]
             subSequences,
-            currentSequence,
-            partNumbers;
+            currentSequence;
 
-        public Bolt(int boltNum, string stationID, string entireSequence, int sequencePos)
+        public Bolt(int boltNum, string stationID, string entireSequence, int sequencePos, int skidID, string FEMLabel)
         {
             InitializeComponent();
             this.boltNum = boltNum;
             this.stationID = stationID;
             this.entireSequence = entireSequence;
             this.sequencePos = sequencePos;
+            this.skidID = skidID;
+            this.FEMLabel = FEMLabel;
             picBoxes = new Dictionary<string, PictureBox>();
         }
 
@@ -98,6 +102,76 @@ namespace CompuScan_MES_Client
         }
         #endregion
 
+        #region [PLC DB Read Threads]
+        private void ReadTransactionDB()
+        {
+            while (isConnected)
+            {
+                transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
+                readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
+                errorCode = S7.GetByteAt(transactReadBuffer, 45);
+
+                //if (errorCode != 0)
+                //{
+                //    HandleError();
+                //}
+
+                if (readTransactionID == 0 && !handshakeCleared)
+                {
+                    handshakeCleared = true;
+                    if (isConnected)
+                    {
+                        S7.SetByteAt(transactWriteBuffer, 45, 1);
+                        S7.SetByteAt(transactWriteBuffer, 96, 60); // Send Equipment ID *** bolting tool
+                        //S7.SetByteAt(transactWriteBuffer, ?, TORQUE); // Send required torque of bolting tool (maybe not required)
+                        S7.SetByteAt(transactWriteBuffer, 44, (byte)maxNumAttempts); // Send MaxNumOfAttempts
+                        int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                        Console.WriteLine("-------------------------" +
+                                          "\nTransaction ID : 1" +
+                                          "\nEquipment ID : " + equipmentID +
+                                          "\nPLC Write Result : " + result1 +
+                                          "\n-------------------------");
+                    }
+                }
+
+                if ((readTransactionID != oldReadTransactionID) && handshakeCleared)
+                {
+                    Console.WriteLine("Transaction ID : " + readTransactionID + "\n-------------------------");
+                    oSignalTransactEvent.Set();
+                    oldReadTransactionID = readTransactionID;
+                }
+
+                Thread.Sleep(50);
+            }
+        }
+
+        private void HandleError()
+        {
+            while (errorCode != 0)
+            {
+                switch (errorCode)
+                {
+                    case 90:
+                        // part failed
+                        break;
+                    case 96:
+                        // max attempts reached, show dialog
+                        break;
+                    case 98:
+                        break;
+                    default:
+                        Console.WriteLine("UNKOWN ERROR");
+                        break;
+                }
+
+                transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);
+                errorCode = S7.GetByteAt(transactReadBuffer, 45);
+
+                Thread.Sleep(50);
+            }
+        }
+        #endregion
+
         #region [Handshake Structure]
         private void Handshake()
         {
@@ -106,20 +180,38 @@ namespace CompuScan_MES_Client
             while (isConnected)
             {
 
-                oSignalTransactEvent.WaitOne(); //Thread waits for new value to be read by PLC DB Read Thread
+                oSignalTransactEvent.WaitOne();
                 oSignalTransactEvent.Reset();
 
                 switch (readTransactionID)
                 {
                     case 2:
+                    case 4:
+                    case 6:
+                    case 8:
+                    case 10:
+                    case 12:
+                    case 14:
+                    case 16:
+                    case 18:
+                    case 20:
+                    case 22:
+                        curBoltNum++;
+                        if (curBoltNum > boltNum)
+                        {
+                            S7.SetByteAt(transactWriteBuffer, 45, 99);
+                            int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                            break;
+                        }
 
                         // DO WORK
 
-                        S7.SetByteAt(transactWriteBuffer, 45, 99);
-                        int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-
-                        Thread.Sleep(50);
-                        
+                        S7.SetByteAt(transactWriteBuffer, 45, (byte)(readTransactionID + 1));
+                        S7.SetByteAt(transactWriteBuffer, 94, 60); // Send Equipment ID *** small label scanner
+                        //S7.SetByteAt(transactWriteBuffer, ?, TORQUE); // Send required torque of bolting tool (maybe not required)
+                        S7.SetByteAt(transactWriteBuffer, 44, (byte)maxNumAttempts); // Send MaxNumOfAttempts
+                        int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                        Console.WriteLine("Write Result : " + result2 + "\n-------------------------");
                         break;
                     case 100:
                         Console.WriteLine("-------------------------" +
@@ -136,7 +228,7 @@ namespace CompuScan_MES_Client
                         else
                         {
                             string[] nextStep = subSequences[sequencePos + 1].Split(',');
-                            hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, (sequencePos + 1)));
+                            hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, (sequencePos + 1), skidID, FEMLabel));
                             this.Close();
                         }
                         
@@ -148,87 +240,7 @@ namespace CompuScan_MES_Client
         }
         #endregion
 
-        #region [PLC DB Read Threads]
-        private void ReadTransactionDB()
-        {
-            while (isConnected)
-            {
-                transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
-                readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
-
-                if (readTransactionID == 0 && !handshakeCleared)
-                {
-                    handshakeCleared = true;
-                    if (isConnected)
-                    {
-                        S7.SetByteAt(transactWriteBuffer, 45, 1);
-                        S7.SetByteAt(transactWriteBuffer, 96, 60); // Send Equipment ID *** bolting tool
-                        int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                        Console.WriteLine("-------------------------" +
-                                          "\nTransaction ID : 1" +
-                                          "\nEquipment ID : " + equipmentID +
-                                          "\nPLC Write Result : " + result1 +
-                                          "\n-------------------------");
-                    }
-                }
-
-                if ((readTransactionID != oldReadTransactionID) && handshakeCleared)
-                {
-                    Console.WriteLine("Transaction ID : " + readTransactionID + "---------------------------------------");
-                    oSignalTransactEvent.Set();
-                    oldReadTransactionID = readTransactionID;
-                }
-
-                Thread.Sleep(50);
-            }
-        }
-        #endregion
-
-        #region [PLC DB Read/Write]
-        private void ReadAllValues()
-        {
-            transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
-
-            lineID = S7.GetStringAt(transactReadBuffer, 0);
-
-            identifier = S7.GetStringAt(transactReadBuffer, 22);
-
-            identifierCount = S7.GetByteAt(transactReadBuffer, 44); // Number of entries in the database (Does not really need to read but write it to plc?)
-
-            readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
-
-            channelStatus = S7.GetByteAt(transactReadBuffer, 46);
-
-            stationStatus = S7.GetByteAt(transactReadBuffer, 47);
-
-            errorCode = S7.GetByteAt(transactReadBuffer, 48);
-
-            userName = S7.GetStringAt(transactReadBuffer, 50);
-
-            equipmentID = S7.GetByteAt(transactReadBuffer, 94);
-
-            productionData = S7.GetStringAt(transactReadBuffer, 96);
-        }
-
-        public void WriteBackToPLC()
-        {
-            //S7.SetStringAt(writeBuffer, 0, 20, lineID);
-            //S7.SetStringAt(writeBuffer, 22, 20, identifier);
-            //S7.SetByteAt(writeBuffer, 44, (byte)identifierCount);
-            S7.SetByteAt(transactWriteBuffer, 45, (byte)writeTransactionID);
-            //S7.SetByteAt(writeBuffer, 46, (byte)channelStatus);
-            //S7.SetByteAt(writeBuffer, 47, (byte)stationStatus);
-            //S7.SetByteAt(writeBuffer, 48, (byte)errorCode);
-            //S7.SetStringAt(writeBuffer, 50, 20, userName);
-            //S7.SetByteAt(writeBuffer, 94, (byte)equipmentID);
-            //S7.SetStringAt(writeBuffer, 96, 200, productionData);
-            int writeResult = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);//1111
-            if (writeResult == 0)
-            {
-                Console.WriteLine("==> Successfully wrote to PLC");
-            }
-        }
-        #endregion
+        
 
         #region [PLC Getters/Setters]
         public string lineID { get; set; }
@@ -251,9 +263,9 @@ namespace CompuScan_MES_Client
         #region [Populate Bolt Images]
         private void PopulateBoltImages()
         {
-            //subSequences = entireSequence.Split('-');
-            //currentSequence = subSequences[sequencePos].Split(',');
-            //partNumbers = String.Join(" ", currentSequence[2].SplitIntoParts(3)).Split(' ');
+            subSequences = entireSequence.Split('-');
+            currentSequence = subSequences[sequencePos].Split(',');
+            maxNumAttempts = Int32.Parse(currentSequence[2]);
 
             for (int i = 0; i < boltNum; i++)
             {

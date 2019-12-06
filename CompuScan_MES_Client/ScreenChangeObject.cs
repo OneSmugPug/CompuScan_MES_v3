@@ -8,29 +8,27 @@ namespace CompuScan_MES_Client
 {
     class ScreenChangeObject
     {
-        private string screenNum;
-        private string count;
-        private string sequence;
-        private int pos;
-
+        private string screenNum, count, sequence, FEMLabel;
+        private int pos, skidID;
         public ScreenChangeObject(string screenNum)
         {
             this.screenNum = screenNum;
         }
 
-        public ScreenChangeObject(string screenNum, string count, string sequence)
+        public ScreenChangeObject(string screenNum, int skidID)
         {
             this.screenNum = screenNum;
-            this.count = count;
-            this.sequence = sequence;
+            this.skidID = skidID;
         }
 
-        public ScreenChangeObject(string screenNum, string count, string sequence, int pos)
+        public ScreenChangeObject(string screenNum, string count, string sequence, int pos, int skidID, string FEMLabel)
         {
             this.screenNum = screenNum;
             this.count = count;
             this.sequence = sequence;
             this.pos = pos;
+            this.skidID = skidID;
+            this.FEMLabel = FEMLabel;
         }
 
         public string GetScreenNum()
@@ -51,6 +49,16 @@ namespace CompuScan_MES_Client
         public int GetPos()
         {
             return pos;
+        }
+
+        public int GetSkidID()
+        {
+            return skidID;
+        }
+
+        public string GetFEMLabel()
+        {
+            return FEMLabel;
         }
     }
 }

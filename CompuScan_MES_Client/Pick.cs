@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Data.SqlClient;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -38,13 +39,19 @@ namespace CompuScan_MES_Client
             curPickNum = 0,
             pickNum,
             txtBoxY = 38,
-            sequencePos;
+            skidID,
+            sequencePos,
+            maxNumAttempts;
 
         private Dictionary<string,TextBox> txtBoxes;
 
+        private DataTable dt;
+
         private string 
             stationID,
-            entireSequence;
+            entireSequence,
+            
+            FEMLabel;
 
         private Thread readTransact,
             handshakeThr;
@@ -52,16 +59,18 @@ namespace CompuScan_MES_Client
         private string[] 
             subSequences,
             currentSequence,
-            partNumbers;
+            shortCodes;
 
 
-        public Pick(int pickNum, string stationID, string entireSequence, int sequencePos)
+        public Pick(int pickNum, string stationID, string entireSequence, int sequencePos, int skidID, string FEMLabel)
         {
             InitializeComponent();
             this.pickNum = pickNum;
             this.stationID = stationID;
             this.entireSequence = entireSequence;
             this.sequencePos = sequencePos;
+            this.skidID = skidID;
+            this.FEMLabel = FEMLabel;
             current_pick.Text = curPickNum.ToString();
             total_pick.Text = pickNum.ToString();
             txtBoxes = new Dictionary<string, TextBox>();
@@ -96,12 +105,80 @@ namespace CompuScan_MES_Client
         }
         #endregion
 
+        #region [PLC DB Read Threads]
+        private void ReadTransactionDB()
+        {
+            while (isConnected)
+            {
+                transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);
+                readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
+                errorCode = S7.GetByteAt(transactReadBuffer, 45);
+
+                //if (errorCode != 0)
+                //{
+                //    HandleError();
+                //}
+
+                if (readTransactionID == 0 && !handshakeCleared)
+                {
+                    handshakeCleared = true;
+                    if (isConnected)
+                    {
+                        S7.SetByteAt(transactWriteBuffer, 45, 1);
+                        S7.SetByteAt(transactWriteBuffer, 94, 31); // Send Equipment ID *** small label scanner
+                        S7.SetByteAt(transactWriteBuffer, 44, (byte)maxNumAttempts); // Send MaxNumOfAttempts
+                        int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                        Console.WriteLine("-------------------------" +
+                                          "\nTransaction ID : 1" +
+                                          "\nEquipment ID 31 : " +
+                                          "\nPLC Write Result : " + result1 +
+                                          "\n-------------------------");
+                    }
+                }
+
+                if ((readTransactionID != oldReadTransactionID) && handshakeCleared)
+                {
+                    Console.WriteLine("Transaction ID : " + readTransactionID);
+                    oSignalTransactEvent.Set();
+                    oldReadTransactionID = readTransactionID;
+                }
+
+                Thread.Sleep(50);
+            }
+        }
+
+        private void HandleError()
+        {
+            while (errorCode != 0)
+            {
+                switch (errorCode)
+                {
+                    case 90:
+                        // part failed
+                        break;
+                    case 96:
+                        // max attempts reached, show dialog
+                        break;
+                    case 98:
+                        break;
+                    default:
+                        Console.WriteLine("UNKOWN ERROR");
+                        break;
+                }
+
+                transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);
+                errorCode = S7.GetByteAt(transactReadBuffer, 45);
+                
+                Thread.Sleep(50);
+            }
+        }
+        #endregion
+
         #region [Handshake Structure]
         private void Handshake()
         {
             
-
-            int count = 1;
+            //int count = 1;
             string scanData;
             
             while (isConnected)
@@ -114,36 +191,6 @@ namespace CompuScan_MES_Client
                 switch (readTransactionID)
                 {
                     case 2:
-
-                        scanData = S7.GetStringAt(transactReadBuffer, 96).ToString();
-                        Console.WriteLine(scanData);
-                        
-                        if (!scanData.Equals(""))
-                        {
-                            this.Invoke((MethodInvoker)delegate
-                            {
-                                TextBox temp;
-                                txtBoxes.TryGetValue("pickedBox" + count, out temp);
-                                count++;
-                                curPickNum++;
-                                current_pick.Text = curPickNum.ToString();
-                                temp.Text = scanData.ToString();
-                            });
-                        
-                            // LOG TO DATABASE
-                        
-                            S7.SetByteAt(transactWriteBuffer, 45, 3);
-                            int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                            Console.WriteLine("Write Result : " + result2 + "---------------------------------------");
-                        }
-                        else
-                        {
-                            Console.WriteLine("NO DATA FOUND");
-                        }
-                        
-                        Thread.Sleep(50);
-                        
-                        break;
                     case 4:
                     case 6:
                     case 8:
@@ -170,21 +217,23 @@ namespace CompuScan_MES_Client
                             this.Invoke((MethodInvoker)delegate
                             {
                                 TextBox temp;
-                                txtBoxes.TryGetValue("pickedBox" + count, out temp);
-                                count++;
+                                txtBoxes.TryGetValue("pickedBox" + curPickNum, out temp);
+                                //count++;
                                 current_pick.Text = curPickNum.ToString();
                                 temp.Text = scanData.ToString();
                             });
 
-                            // LOG TO DATABASE
-
                             S7.SetByteAt(transactWriteBuffer, 45, (byte)(readTransactionID + 1));
+                            S7.SetByteAt(transactWriteBuffer, 94, 31); // Send Equipment ID *** small label scanner
+                            S7.SetByteAt(transactWriteBuffer, 44, (byte)maxNumAttempts); // Send MaxNumOfAttempts
                             int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                            Console.WriteLine("Write Result : " + result2 + "---------------------------------------");
+                            Console.WriteLine("Write Result : " + result2 + "\n-------------------------");
                         }
-                        else
+                        else // no data received from plc
                         {
-                            Console.WriteLine("NO DATA FOUND");
+                            //S7.SetByteAt(transactWriteBuffer, 45, 3); // Check what tr id to send back if no data was received
+                            S7.SetByteAt(transactWriteBuffer, 48, 99);
+                            int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                         }
 
                         Thread.Sleep(50);
@@ -202,7 +251,7 @@ namespace CompuScan_MES_Client
                         else
                         {
                             string[] nextStep = subSequences[sequencePos + 1].Split(',');
-                            hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, (sequencePos + 1)));
+                            hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, (sequencePos + 1), skidID, FEMLabel));
                             this.Close();
                         }
                         break;
@@ -213,87 +262,7 @@ namespace CompuScan_MES_Client
         }
         #endregion
 
-        #region [PLC DB Read Threads]
-        private void ReadTransactionDB()
-        {
-            while (isConnected)
-            {
-                transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
-                readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
-
-                if (readTransactionID == 0 && !handshakeCleared)
-                {
-                    handshakeCleared = true;
-                    if (isConnected)
-                    {
-                        S7.SetByteAt(transactWriteBuffer, 45, 1);
-                        S7.SetByteAt(transactWriteBuffer, 94, 31); // Send Equipment ID *** small label scanner
-                        int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                        Console.WriteLine("-------------------------" +
-                                          "\nTransaction ID : 1" +
-                                          "\nEquipment ID 31 : " +
-                                          "\nPLC Write Result : " + result1 +
-                                          "\n-------------------------");
-                    }
-                }
-
-                if ((readTransactionID != oldReadTransactionID) && handshakeCleared)
-                {
-                    Console.WriteLine("Transaction ID : " + readTransactionID);
-                    oSignalTransactEvent.Set();
-                    oldReadTransactionID = readTransactionID;
-                }
-
-                Thread.Sleep(50);
-            }
-        }
-        #endregion
-
-        #region [PLC DB Read/Write]
-        private void ReadAllValues()
-        {
-            transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
-
-            lineID = S7.GetStringAt(transactReadBuffer, 0);
-
-            identifier = S7.GetStringAt(transactReadBuffer, 22);
-
-            identifierCount = S7.GetByteAt(transactReadBuffer, 44); // Number of entries in the database (Does not really need to read but write it to plc?)
-
-            readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
-
-            channelStatus = S7.GetByteAt(transactReadBuffer, 46);
-
-            stationStatus = S7.GetByteAt(transactReadBuffer, 47);
-
-            errorCode = S7.GetByteAt(transactReadBuffer, 48);
-
-            userName = S7.GetStringAt(transactReadBuffer, 50);
-
-            equipmentID = S7.GetByteAt(transactReadBuffer, 94);
-
-            productionData = S7.GetStringAt(transactReadBuffer, 96);
-        }
-
-        public void WriteBackToPLC()
-        {
-            //S7.SetStringAt(writeBuffer, 0, 20, lineID);
-            //S7.SetStringAt(writeBuffer, 22, 20, identifier);
-            //S7.SetByteAt(writeBuffer, 44, (byte)identifierCount);
-            S7.SetByteAt(transactWriteBuffer, 45, (byte)writeTransactionID);
-            //S7.SetByteAt(writeBuffer, 46, (byte)channelStatus);
-            //S7.SetByteAt(writeBuffer, 47, (byte)stationStatus);
-            //S7.SetByteAt(writeBuffer, 48, (byte)errorCode);
-            //S7.SetStringAt(writeBuffer, 50, 20, userName);
-            //S7.SetByteAt(writeBuffer, 94, (byte)equipmentID);
-            //S7.SetStringAt(writeBuffer, 96, 200, productionData);
-            int writeResult = transactClient.DBWrite(3001, 0, transactWriteBuffer.Length, transactWriteBuffer);//1111
-            if (writeResult == 0)
-            {
-                Console.WriteLine("==> Successfully wrote to PLC");
-            }
-        }
-        #endregion
+        
 
         #region [PLC Getters/Setters]
         public string lineID { get; set; }
@@ -318,27 +287,53 @@ namespace CompuScan_MES_Client
         {
             subSequences = entireSequence.Split('-');
             currentSequence = subSequences[sequencePos].Split(',');
-            partNumbers = String.Join(" ", currentSequence[2].SplitIntoParts(3)).Split(' ');
+            shortCodes = String.Join(" ", currentSequence[3].SplitIntoParts(3)).Split(' ');
+            maxNumAttempts = Int32.Parse(currentSequence[2]);
 
-            for (int i = 0; i < pickNum; i++)
+            if (shortCodes.Length != pickNum)
             {
-                TextBox txtReq = new TextBox();
-                txtReq.Name = "reqBox" + (i + 1);
-                txtReq.Location = new Point(lbl_Req.Location.X - 6, lbl_Req.Location.Y + txtBoxY);
-                txtReq.Size = new Size(100, 20);
-                txtReq.Text = partNumbers[i];
-                TextBox txtPicked = new TextBox();
-                txtPicked.Name = "pickedBox" + (i + 1);
-                txtPicked.Location = new Point(lbl_picked.Location.X - 17, lbl_picked.Location.Y + txtBoxY);
-                txtPicked.Size = new Size(100, 20);
-                txtPicked.Text = txtPicked.Name;
-                txtBoxY += 38;
+                Console.WriteLine("The number of picks do not equal the number of part numbers in the database");
+                return;
+            }
 
-                txtBoxes.Add(txtReq.Name, txtReq);
-                txtBoxes.Add(txtPicked.Name, txtPicked);
+            using (SqlConnection conn = DBUtils.GetMainDBConnection())
+            {
+                conn.Open();
+                
+                for (int i = 0; i < pickNum; i++)
+                {
+                    // POSSIBLE OPTIMIZATION REQUIRED
+                    dt = new DataTable();
+                    SqlDataAdapter da = new SqlDataAdapter("SELECT [Valeo Comp.] FROM ShortCodes WHERE [Short Code] = '" + shortCodes[i] + "'", conn);
+                    da.Fill(dt);
+                    // -----------------------------------
 
-                pickBoxPnl.Controls.Add(txtReq);
-                pickBoxPnl.Controls.Add(txtPicked);
+                    if (dt.Rows.Count != 1)
+                    {
+                        Console.WriteLine("Part number not found in database");
+                        return;
+                    }
+
+                    DataRow row = dt.Rows[0];
+
+                    TextBox txtReq = new TextBox();
+                    txtReq.Name = "reqBox" + (i + 1);
+                    txtReq.Location = new Point(lbl_Req.Location.X - 6, lbl_Req.Location.Y + txtBoxY);
+                    txtReq.Size = new Size(100, 20);
+                    txtReq.Text = row["Valeo Comp."].ToString();
+                    TextBox txtPicked = new TextBox();
+                    txtPicked.Name = "pickedBox" + (i + 1);
+                    txtPicked.Location = new Point(lbl_picked.Location.X - 17, lbl_picked.Location.Y + txtBoxY);
+                    txtPicked.Size = new Size(100, 20);
+                    txtPicked.Text = txtPicked.Name;
+                    txtBoxY += 38;
+
+                    txtBoxes.Add(txtReq.Name, txtReq);
+                    txtBoxes.Add(txtPicked.Name, txtPicked);
+
+                    pickBoxPnl.Controls.Add(txtReq);
+                    pickBoxPnl.Controls.Add(txtPicked);
+                }
             }
         }
         #endregion

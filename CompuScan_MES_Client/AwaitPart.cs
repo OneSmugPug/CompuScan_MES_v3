@@ -37,14 +37,14 @@ namespace CompuScan_MES_Client
         private ManualResetEvent
             oSignalTransactEvent = new ManualResetEvent(false);
 
-
         public static byte[] 
             transactReadBuffer = new byte[402],
             transactWriteBuffer = new byte[402],
             palletReadBuffer = new byte[12],
             palletWriteBuffer = new byte[2];
 
-        private Thread readTransact,
+        private Thread 
+            readTransact,
             handshakeThr;
         #endregion
 
@@ -59,7 +59,7 @@ namespace CompuScan_MES_Client
         private void AwaitPart_Load(object sender, EventArgs e)
         {
             EstablishConnection();
-            //Thread.Sleep(100);
+            
             if (isConnected)
             {
                 readTransact = new Thread(ReadTransactionDB);
@@ -84,7 +84,6 @@ namespace CompuScan_MES_Client
             if (transactClient.Connected)
                 isConnected = true;
             else MessageBox.Show("Connection to PLC on 192.168.1.1 unsuccessful.", "No PLC Connection", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
         }
         #endregion
 
@@ -93,7 +92,7 @@ namespace CompuScan_MES_Client
         {
             while (isConnected)
             {
-                transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
+                transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);
                 readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
 
                 if (readTransactionID == 0 && !handshakeCleared)
@@ -102,10 +101,11 @@ namespace CompuScan_MES_Client
                     if (isConnected)
                     {
                         S7.SetByteAt(transactWriteBuffer, 45, 1);
+                        S7.SetByteAt(transactWriteBuffer, 94, 1);
                         int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                         Console.WriteLine("-------------------------" + "\nTransaction ID : 1" +
                                                                           "\nWrite Result : " + result1 +
-                                                                          "-------------------------");
+                                                                          "\n-------------------------");
                     }
                 }
 
@@ -148,6 +148,7 @@ namespace CompuScan_MES_Client
 
                         else
                         {
+                            // OBTAIN SKID ID FROM DATABASE AND SEND IT TO THE SCAN FEM LABEL SCREEN
                             this.Invoke((MethodInvoker)delegate
                             {
                                 hub.PublishAsync(new ScreenChangeObject("2"));

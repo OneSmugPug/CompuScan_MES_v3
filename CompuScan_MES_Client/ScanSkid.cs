@@ -27,7 +27,7 @@ namespace CompuScan_MES_Client
             isConnected = false,
             handshakeCleared = false;
 
-        long palletID;
+        private long palletID;
         private int oldReadTransactionID = 0;
         private DataTable dt;
         private MainPage parent = null;
@@ -58,7 +58,7 @@ namespace CompuScan_MES_Client
         private void ScanSkid_Load(object sender, EventArgs e)
         {
             EstablishConnection();
-            //Thread.Sleep(100);
+
             if (isConnected)
             {
                 readTransact = new Thread(ReadTransactionDB);
@@ -91,7 +91,7 @@ namespace CompuScan_MES_Client
         {
             while (isConnected)
             {
-                transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);//1110
+                transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);
                 readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
 
                 if (readTransactionID == 0 && !handshakeCleared)
@@ -166,7 +166,7 @@ namespace CompuScan_MES_Client
                             foreach (DataRow row in dt.Rows)
                             {
                                 palletNum = Int32.Parse(row["Pallet Number"].ToString());
-                                //UpdateUISkidID();
+                                UpdateUISkidID();
                             }
 
                             S7.SetByteAt(transactWriteBuffer, 45, 99);
@@ -213,7 +213,7 @@ namespace CompuScan_MES_Client
                                 da2.Parameters.AddWithValue("@palletID", palletID.ToString());
                                 da2.Parameters.AddWithValue("@palletNum", palletNum);
                                 da2.ExecuteNonQuery();
-                                //UpdateUISkidID();
+                                UpdateUISkidID();
                                 S7.SetByteAt(transactWriteBuffer, 45, 99);
                                 S7.SetStringAt(transactWriteBuffer, 96, 200, palletNum.ToString()); // Confirm what needs to be written back to plc with the trID
                                 int result3 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
@@ -243,7 +243,7 @@ namespace CompuScan_MES_Client
                                   "\nTransaction ID : " + readTransactionID +
                                   "\nResult : Handshake done... Starting next screen." +
                                   "\n-------------------------");
-                        hub.PublishAsync(new ScreenChangeObject("2"));
+                        hub.PublishAsync(new ScreenChangeObject("2", palletNum));
                         this.Close();
                         break;
                     default:
