@@ -73,6 +73,12 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AddProcess.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AddProcess.Designer.cs">
+      <DependentUpon>AddProcess.cs</DependentUpon>
+    </Compile>
     <Compile Include="AddSeq.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -128,6 +134,9 @@
     <Compile Include="SeqManager.Designer.cs">
       <DependentUpon>SeqManager.cs</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="AddProcess.resx">
+      <DependentUpon>AddProcess.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="AddSeq.resx">
       <DependentUpon>AddSeq.cs</DependentUpon>
     </EmbeddedResource>
