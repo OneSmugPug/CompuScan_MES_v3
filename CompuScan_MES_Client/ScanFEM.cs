@@ -112,7 +112,7 @@ namespace CompuScan_MES_Client
 
                 if ((readTransactionID != oldReadTransactionID) && handshakeCleared)
                 {
-                    Console.WriteLine("Transaction ID : " + readTransactionID);
+                    Console.WriteLine("Transaction ID IN : " + readTransactionID);
                     oSignalTransactEvent.Set();
                     oldReadTransactionID = readTransactionID;
                 }

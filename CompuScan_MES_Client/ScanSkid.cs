@@ -103,7 +103,7 @@ namespace CompuScan_MES_Client
                         S7.SetByteAt(transactWriteBuffer, 94, 85); // Send Equipment ID *** RFID SCANNER
                         int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                         Console.WriteLine("-------------------------" +
-                                          "\nTransaction ID : 1" +
+                                          "\nTransaction ID OUT : 1" +
                                           "\nEquipment ID : 85" +
                                           "\nPLC Write Result : " + result1 +
                                           "\n-------------------------");
@@ -112,7 +112,7 @@ namespace CompuScan_MES_Client
 
                 if ((readTransactionID != oldReadTransactionID) && handshakeCleared)
                 {
-                    Console.WriteLine("Transaction ID : " + readTransactionID);
+                    Console.WriteLine("Transaction ID IN : " + readTransactionID);
                     oSignalTransactEvent.Set();
                     oldReadTransactionID = readTransactionID;
                 }
@@ -173,7 +173,7 @@ namespace CompuScan_MES_Client
                             S7.SetStringAt(transactWriteBuffer, 96, 200, ((short)palletNum).ToString());
                             int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                             Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID : " + readTransactionID +
+                                  "\nTransaction ID OUT : " + readTransactionID +
                                   "\nPallet ID : " + palletID +
                                   "\nResult : Found pallet in database" +
                                   "\nPLC Write Result : " + result1 +
@@ -185,7 +185,7 @@ namespace CompuScan_MES_Client
                             S7.SetByteAt(transactWriteBuffer, 48, 99);
                             int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                             Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID : " + readTransactionID +
+                                  "\nTransaction ID OUT : " + readTransactionID +
                                   "\nPallet ID : " + palletID +
                                   "\nResult : Did not find pallet in database" +
                                   "\nErrorcode : 99" +
@@ -218,7 +218,7 @@ namespace CompuScan_MES_Client
                                 S7.SetStringAt(transactWriteBuffer, 96, 200, palletNum.ToString()); // Confirm what needs to be written back to plc with the trID
                                 int result3 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                                 Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID : " + readTransactionID +
+                                  "\nTransaction ID OUT : " + readTransactionID +
                                   "\nPallet ID : " + palletID +
                                   "\nResult : Successfully added pallet to database" +
                                   "\nPLC Write Result : " + result3 +
@@ -230,7 +230,7 @@ namespace CompuScan_MES_Client
                                 S7.SetByteAt(transactWriteBuffer, 48, 98);
                                 int result3 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                                 Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID : " + readTransactionID +
+                                  "\nTransaction ID OUT : " + readTransactionID +
                                   "\nPallet ID : " + palletID +
                                   "\nResult : Successfully added pallet to database" +
                                   "\nPLC Write Result : " + result3 +
@@ -240,7 +240,7 @@ namespace CompuScan_MES_Client
                         break;
                     case 100:
                         Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID : " + readTransactionID +
+                                  "\nTransaction ID OUT : " + readTransactionID +
                                   "\nResult : Handshake done... Starting next screen." +
                                   "\n-------------------------");
                         hub.PublishAsync(new ScreenChangeObject("2", palletNum));

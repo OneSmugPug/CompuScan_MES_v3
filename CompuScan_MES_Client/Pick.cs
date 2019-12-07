@@ -49,8 +49,8 @@ namespace CompuScan_MES_Client
 
         private string 
             stationID,
+            scanData,
             entireSequence,
-            
             FEMLabel;
 
         private Thread readTransact,
@@ -60,6 +60,8 @@ namespace CompuScan_MES_Client
             subSequences,
             currentSequence,
             shortCodes;
+
+        
 
 
         public Pick(int pickNum, string stationID, string entireSequence, int sequencePos, int skidID, string FEMLabel)
@@ -138,7 +140,7 @@ namespace CompuScan_MES_Client
 
                 if ((readTransactionID != oldReadTransactionID) && handshakeCleared)
                 {
-                    Console.WriteLine("Transaction ID : " + readTransactionID);
+                    Console.WriteLine("Transaction ID IN : " + readTransactionID);
                     oSignalTransactEvent.Set();
                     oldReadTransactionID = readTransactionID;
                 }
@@ -177,87 +179,105 @@ namespace CompuScan_MES_Client
         #region [Handshake Structure]
         private void Handshake()
         {
-            
-            //int count = 1;
-            string scanData;
-            
-            while (isConnected)
+            try
             {
-
-                oSignalTransactEvent.WaitOne();
-                oSignalTransactEvent.Reset();
-
-                
-                switch (readTransactionID)
+                using (SqlConnection conn = DBUtils.GetFEMDBConnection())
                 {
-                    case 2:
-                    case 4:
-                    case 6:
-                    case 8:
-                    case 10:
-                    case 12:
-                    case 14:
-                    case 16:
-                    case 18:
-                    case 20:
-                    case 22:
-                        curPickNum++;
-                        if (curPickNum > pickNum)
-                        {
-                            S7.SetByteAt(transactWriteBuffer, 45, 99);
-                            int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                            break;
-                        }
+                    conn.Open();
+                    String query = "INSERT INTO Station31Pick ([FEM Label],Timestamp,[Picked Part]) VALUES (@femlabel, @timestamp, @pickedpart)";
 
-                        scanData = S7.GetStringAt(transactReadBuffer, 96).ToString();
-                        Console.WriteLine(scanData);
 
-                        if (!scanData.Equals(""))
-                        {
-                            this.Invoke((MethodInvoker)delegate
-                            {
-                                TextBox temp;
-                                txtBoxes.TryGetValue("pickedBox" + curPickNum, out temp);
-                                //count++;
-                                current_pick.Text = curPickNum.ToString();
-                                temp.Text = scanData.ToString();
-                            });
+                    while (isConnected)
+                    {
 
-                            S7.SetByteAt(transactWriteBuffer, 45, (byte)(readTransactionID + 1));
-                            S7.SetByteAt(transactWriteBuffer, 94, 31); // Send Equipment ID *** small label scanner
-                            S7.SetByteAt(transactWriteBuffer, 44, (byte)maxNumAttempts); // Send MaxNumOfAttempts
-                            int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                            Console.WriteLine("Write Result : " + result2 + "\n-------------------------");
-                        }
-                        else // no data received from plc
-                        {
-                            //S7.SetByteAt(transactWriteBuffer, 45, 3); // Check what tr id to send back if no data was received
-                            S7.SetByteAt(transactWriteBuffer, 48, 99);
-                            int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                        }
+                        oSignalTransactEvent.WaitOne();
+                        oSignalTransactEvent.Reset();
 
-                        Thread.Sleep(50);
-                        break;
-                    case 100:
-                        Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID : " + readTransactionID +
-                                  "\nResult : Handshake done... Starting next screen." +
-                                  "\n-------------------------");
-                        if ((sequencePos + 1) >= subSequences.Length)
+                        SqlCommand command = new SqlCommand(query, conn);
+
+                        switch (readTransactionID)
                         {
-                            hub.PublishAsync(new ScreenChangeObject("0"));
-                            this.Close();
+                            case 2:
+                            case 4:
+                            case 6:
+                            case 8:
+                            case 10:
+                            case 12:
+                            case 14:
+                            case 16:
+                            case 18:
+                            case 20:
+                            case 22:
+
+                                curPickNum++;
+                                scanData = S7.GetStringAt(transactReadBuffer, 96).ToString();
+                                Console.WriteLine(scanData);
+
+                                if (!scanData.Equals(""))
+                                {
+                                    this.Invoke((MethodInvoker)delegate
+                                    {
+                                        TextBox temp;
+                                        txtBoxes.TryGetValue("pickedBox" + curPickNum, out temp);
+                                        //count++;
+                                        current_pick.Text = curPickNum.ToString();
+                                        temp.Text = scanData.ToString();
+                                    });
+
+                                    command.Parameters.AddWithValue("@femlabel", FEMLabel);
+                                    command.Parameters.AddWithValue("@timestamp", DateTime.Now);
+                                    command.Parameters.AddWithValue("@pickedpart", scanData);
+                                    command.ExecuteNonQuery();
+
+                                    if (curPickNum >= pickNum)
+                                    {
+                                        S7.SetByteAt(transactWriteBuffer, 45, 99);
+                                        int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                        break;
+                                    }
+
+                                    S7.SetByteAt(transactWriteBuffer, 45, (byte)(readTransactionID + 1));
+                                    S7.SetByteAt(transactWriteBuffer, 94, 31); // Send Equipment ID *** small label scanner
+                                    S7.SetByteAt(transactWriteBuffer, 44, (byte)maxNumAttempts); // Send MaxNumOfAttempts
+                                    int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                    Console.WriteLine("Write Result : " + result2 + "\n-------------------------");
+                                }
+                                else // no data received from plc
+                                {
+                                    //S7.SetByteAt(transactWriteBuffer, 45, 3); // Check what tr id to send back if no data was received
+                                    S7.SetByteAt(transactWriteBuffer, 48, 99);
+                                    int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                }
+
+                                Thread.Sleep(50);
+                                break;
+                            case 100:
+                                Console.WriteLine("-------------------------" +
+                                          "\nTransaction ID : " + readTransactionID +
+                                          "\nResult : Handshake done... Starting next screen." +
+                                          "\n-------------------------");
+                                if ((sequencePos + 1) >= subSequences.Length)
+                                {
+                                    hub.PublishAsync(new ScreenChangeObject("0"));
+                                    this.Close();
+                                }
+                                else
+                                {
+                                    string[] nextStep = subSequences[sequencePos + 1].Split(',');
+                                    hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, (sequencePos + 1), skidID, FEMLabel));
+                                    this.Close();
+                                }
+                                break;
+                            default:
+                                break;
                         }
-                        else
-                        {
-                            string[] nextStep = subSequences[sequencePos + 1].Split(',');
-                            hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, (sequencePos + 1), skidID, FEMLabel));
-                            this.Close();
-                        }
-                        break;
-                    default:
-                        break;
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                handshakeCleared = false;
             }
         }
         #endregion

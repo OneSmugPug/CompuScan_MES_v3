@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using Sharp7;
 using System.Threading;
 using PubSub;
+using System.Data.SqlClient;
 
 namespace CompuScan_MES_Client
 {
@@ -48,6 +49,7 @@ namespace CompuScan_MES_Client
 
         private string 
             stationID,
+            boltResult,
             entireSequence,
             FEMLabel;
 
@@ -122,7 +124,7 @@ namespace CompuScan_MES_Client
                     if (isConnected)
                     {
                         S7.SetByteAt(transactWriteBuffer, 45, 1);
-                        S7.SetByteAt(transactWriteBuffer, 96, 60); // Send Equipment ID *** bolting tool
+                        S7.SetByteAt(transactWriteBuffer, 94, 60); // Send Equipment ID *** bolting tool
                         //S7.SetByteAt(transactWriteBuffer, ?, TORQUE); // Send required torque of bolting tool (maybe not required)
                         S7.SetByteAt(transactWriteBuffer, 44, (byte)maxNumAttempts); // Send MaxNumOfAttempts
                         int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
@@ -136,7 +138,7 @@ namespace CompuScan_MES_Client
 
                 if ((readTransactionID != oldReadTransactionID) && handshakeCleared)
                 {
-                    Console.WriteLine("Transaction ID : " + readTransactionID + "\n-------------------------");
+                    Console.WriteLine("Transaction ID IN : " + readTransactionID + "\n-------------------------");
                     oSignalTransactEvent.Set();
                     oldReadTransactionID = readTransactionID;
                 }
@@ -175,67 +177,101 @@ namespace CompuScan_MES_Client
         #region [Handshake Structure]
         private void Handshake()
         {
-            
-
-            while (isConnected)
+            try
             {
-
-                oSignalTransactEvent.WaitOne();
-                oSignalTransactEvent.Reset();
-
-                switch (readTransactionID)
+                using (SqlConnection conn = DBUtils.GetFEMDBConnection())
                 {
-                    case 2:
-                    case 4:
-                    case 6:
-                    case 8:
-                    case 10:
-                    case 12:
-                    case 14:
-                    case 16:
-                    case 18:
-                    case 20:
-                    case 22:
-                        curBoltNum++;
-                        if (curBoltNum > boltNum)
-                        {
-                            S7.SetByteAt(transactWriteBuffer, 45, 99);
-                            int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                            break;
-                        }
+                    conn.Open();
+                    String query = "INSERT INTO Station31Bolt ([FEM Label],Timestamp,[Bolt Result]) VALUES (@femlabel, @timestamp, @boltresult)";
 
-                        // DO WORK
+                    while (isConnected)
+                    {
 
-                        S7.SetByteAt(transactWriteBuffer, 45, (byte)(readTransactionID + 1));
-                        S7.SetByteAt(transactWriteBuffer, 94, 60); // Send Equipment ID *** small label scanner
-                        //S7.SetByteAt(transactWriteBuffer, ?, TORQUE); // Send required torque of bolting tool (maybe not required)
-                        S7.SetByteAt(transactWriteBuffer, 44, (byte)maxNumAttempts); // Send MaxNumOfAttempts
-                        int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                        Console.WriteLine("Write Result : " + result2 + "\n-------------------------");
-                        break;
-                    case 100:
-                        Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID : " + readTransactionID +
-                                  "\nResult : Handshake done... Starting next screen." +
-                                  "\n-------------------------");
-                        
-                        subSequences = entireSequence.Split('-');
-                        if ((sequencePos + 1) >= subSequences.Length)
+                        oSignalTransactEvent.WaitOne();
+                        oSignalTransactEvent.Reset();
+
+                        SqlCommand command = new SqlCommand(query, conn);
+
+                        switch (readTransactionID)
                         {
-                            hub.PublishAsync(new ScreenChangeObject("0"));
-                            this.Close();
+                            case 2:
+                            case 4:
+                            case 6:
+                            case 8:
+                            case 10:
+                            case 12:
+                            case 14:
+                            case 16:
+                            case 18:
+                            case 20:
+                            case 22:
+                                curBoltNum++;
+                                boltResult = S7.GetStringAt(transactReadBuffer, 96).ToString();
+
+                                if (!boltResult.Equals(""))
+                                {
+
+                                    this.Invoke((MethodInvoker)delegate
+                                    {
+                                        current_bolt.Text = curBoltNum.ToString();
+                                    });
+
+                                    command.Parameters.AddWithValue("@femlabel", FEMLabel);
+                                    command.Parameters.AddWithValue("@timestamp", DateTime.Now);
+                                    command.Parameters.AddWithValue("@boltresult", boltResult);
+                                    command.ExecuteNonQuery();
+
+                                    if (curBoltNum >= boltNum)
+                                    {
+                                        S7.SetByteAt(transactWriteBuffer, 45, 99);
+                                        int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                        break;
+                                    }
+
+                                    S7.SetByteAt(transactWriteBuffer, 45, (byte)(readTransactionID + 1));
+                                    S7.SetByteAt(transactWriteBuffer, 94, 60); // Send Equipment ID *** bolting tool
+                                    S7.SetByteAt(transactWriteBuffer, 44, (byte)maxNumAttempts); // Send MaxNumOfAttempts
+                                    int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                    Console.WriteLine("Write Result : " + result2 + "\n-------------------------");
+                                }
+                                else // no data received from plc
+                                {
+                                    //S7.SetByteAt(transactWriteBuffer, 45, 3); // Check what tr id to send back if no data was received
+                                    S7.SetByteAt(transactWriteBuffer, 48, 99);
+                                    int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
+                                }
+                                break;
+                            case 100:
+
+                                Console.WriteLine("-------------------------" +
+                                          "\nTransaction ID : " + readTransactionID +
+                                          "\nResult : Handshake done... Starting next screen." +
+                                          "\n-------------------------");
+
+                                subSequences = entireSequence.Split('-');
+                                if ((sequencePos + 1) >= subSequences.Length)
+                                {
+                                    hub.PublishAsync(new ScreenChangeObject("0"));
+                                    this.Close();
+                                }
+                                else
+                                {
+                                    string[] nextStep = subSequences[sequencePos + 1].Split(',');
+                                    hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, (sequencePos + 1), skidID, FEMLabel));
+                                    this.Close();
+                                }
+
+                                break;
+                            default:
+                                break;
                         }
-                        else
-                        {
-                            string[] nextStep = subSequences[sequencePos + 1].Split(',');
-                            hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, (sequencePos + 1), skidID, FEMLabel));
-                            this.Close();
-                        }
-                        
-                        break;
-                    default:
-                        break;
+                    }
                 }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                handshakeCleared = false;
             }
         }
         #endregion
