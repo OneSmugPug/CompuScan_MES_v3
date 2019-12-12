@@ -417,6 +417,11 @@ namespace CompuScan_MES_Main
         #region [Add Sequence Button]
         private void Btn_AddSeq_Click(object sender, EventArgs e)
         {
+            int count = 0, totProc = 0;
+            string typeNum = string.Empty,
+                codeInstruct = string.Empty,
+                sequence = string.Empty;
+
             using (AddSeq frmAddSeq = new AddSeq())
             {
                 frmAddSeq.Owner = this;
@@ -424,7 +429,89 @@ namespace CompuScan_MES_Main
 
                 if (frmAddSeq.DialogResult == DialogResult.OK)
                 {
+                    ListBox process = frmAddSeq.Process;
 
+                    for (int i = 0; i < process.Items.Count; i++)
+                    {
+                        string curProc = process.Items[i].ToString();
+
+                        string[] procArr = curProc.Split(',');
+                         
+                        if (procArr[0].Equals("Pick (3)")) 
+                        {
+                            count++;
+
+                            if (typeNum.Equals(String.Empty) || typeNum.Equals("4"))
+                                typeNum = "3";
+
+                            string[] tempArr2 = procArr[1].Split('-');
+
+                            if (!codeInstruct.Equals(String.Empty))
+                                codeInstruct += "," + tempArr2[0].Trim() + procArr[2];
+                            else codeInstruct += tempArr2[0].Trim() + procArr[2];
+                        }
+                        else if (procArr[0].Equals("Bolt (4)"))
+                        {
+                            if (!typeNum.Equals("3"))
+                            {
+                                typeNum = "4";
+
+                                string[] tempArr2 = procArr[3].Split('-');
+                                sequence += "4," + procArr[1] + "," + procArr[2] + "," + tempArr2[0].Trim();
+
+                                totProc++;
+                            }
+                            else
+                            {
+                                sequence += "3," + count + "," + codeInstruct;
+
+                                count = 0;
+                                codeInstruct = string.Empty;
+
+                                typeNum = "4";
+
+                                string[] tempArr2 = procArr[3].Split('-');
+                                sequence += "-4," + procArr[1] + "," + procArr[2] + "," + tempArr2[0].Trim();
+
+                                totProc += 2;
+                            }
+
+                            if (i + 1 != process.Items.Count)
+                                sequence += "-";
+                        }
+                    }
+
+                    if (count > 0)
+                    {
+                        sequence += "3," + count + "," + codeInstruct;
+                        totProc++;
+                    }
+
+                    using (SqlConnection conn = DBUtils.GetDBConnection())
+                    {
+                        conn.Open();
+                        try
+                        {
+                            using (SqlCommand cmd = new SqlCommand("INSERT INTO Sequences VALUES (@Station, @Variant, @Model, @Processes, @Sequence)", conn))
+                            {
+                                cmd.Parameters.AddWithValue("@Station", frmAddSeq.Station);
+
+                                string[] tempArr = frmAddSeq.Variant.Split('_');
+
+                                cmd.Parameters.AddWithValue("@Variant", tempArr[2]);
+                                cmd.Parameters.AddWithValue("@Model", tempArr[1]);
+                                cmd.Parameters.AddWithValue("@Processes", totProc);
+                                cmd.Parameters.AddWithValue("@Sequence", sequence);
+                                cmd.ExecuteNonQuery();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show(ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        }
+                    }
+
+                    LoadSequences();
                 }
             }
         }

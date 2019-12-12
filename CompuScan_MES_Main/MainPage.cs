@@ -280,18 +280,23 @@ namespace CompuScan_MES_Main
                 da.Fill(dt);
             }
 
-            string[] tempArr = rfidCode.Split(',');
-            string tempStr = tempArr[1].Remove(0, 4);
-
-            foreach (DataRow row in dt.Rows)
+            if (rfidCode != null)
             {
-                if (row["[Card ID]"].ToString().Equals(tempStr))
+                string[] tempArr = rfidCode.Split(',');
+                string tempStr = tempArr[1].Remove(0, 4);
+
+                foreach (DataRow row in dt.Rows)
                 {
-                    txt_MP_UserName.Text = row["[First Name]"].ToString() + " " + row["[Last Name]"];
-                    txt_MP_AccessLvl.Text = row["[Access Level]"].ToString();
-                    return true;
+                    if (row["[Card ID]"].ToString().Equals(tempStr))
+                    {
+                        txt_MP_UserName.Text = row["[First Name]"].ToString() + " " + row["[Last Name]"];
+                        txt_MP_AccessLvl.Text = row["[Access Level]"].ToString();
+                        return true;
+                    }
                 }
+                return false;
             }
+
             return false;
         }
 
