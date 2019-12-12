@@ -125,8 +125,6 @@ namespace CompuScan_MES_Client
         #region [Handshake Structure]
         private void Handshake()
         {
-            
-
             while (isConnected)
             {
                 oSignalTransactEvent.WaitOne();
@@ -173,7 +171,7 @@ namespace CompuScan_MES_Client
                             S7.SetStringAt(transactWriteBuffer, 96, 200, ((short)palletNum).ToString());
                             int result1 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                             Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID OUT : " + readTransactionID +
+                                  "\nTransaction ID OUT : 99" + 
                                   "\nPallet ID : " + palletID +
                                   "\nResult : Found pallet in database" +
                                   "\nPLC Write Result : " + result1 +
@@ -185,7 +183,7 @@ namespace CompuScan_MES_Client
                             S7.SetByteAt(transactWriteBuffer, 48, 99);
                             int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                             Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID OUT : " + readTransactionID +
+                                  "\nTransaction ID OUT : 3" + 
                                   "\nPallet ID : " + palletID +
                                   "\nResult : Did not find pallet in database" +
                                   "\nErrorcode : 99" +
@@ -196,6 +194,8 @@ namespace CompuScan_MES_Client
                         Thread.Sleep(50);
                         break;
                     case 4:
+                    case 6:
+                    case 8:
                         string a = S7.GetStringAt(transactReadBuffer, 96).ToString();
                         palletNum = Int32.Parse(a);
                         using (SqlConnection conn = DBUtils.GetMainDBConnection())
@@ -218,7 +218,7 @@ namespace CompuScan_MES_Client
                                 S7.SetStringAt(transactWriteBuffer, 96, 200, palletNum.ToString()); // Confirm what needs to be written back to plc with the trID
                                 int result3 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                                 Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID OUT : " + readTransactionID +
+                                  "\nTransaction ID OUT : 99" + 
                                   "\nPallet ID : " + palletID +
                                   "\nResult : Successfully added pallet to database" +
                                   "\nPLC Write Result : " + result3 +
@@ -230,9 +230,10 @@ namespace CompuScan_MES_Client
                                 S7.SetByteAt(transactWriteBuffer, 48, 98);
                                 int result3 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
                                 Console.WriteLine("-------------------------" +
-                                  "\nTransaction ID OUT : " + readTransactionID +
+                                  "\nTransaction ID OUT : 5" + 
                                   "\nPallet ID : " + palletID +
-                                  "\nResult : Successfully added pallet to database" +
+                                  "\nResult : Duplicate pallet number found in database" +
+                                  "\nErrorcode : 99" +
                                   "\nPLC Write Result : " + result3 +
                                   "\n-------------------------");
                             }
@@ -254,7 +255,7 @@ namespace CompuScan_MES_Client
         #endregion
 
         #region [Update SkidID on UI]
-        private bool UpdateUISkidID()
+        private void UpdateUISkidID()
         {
             if (palletNum > 0)
             {
@@ -266,7 +267,6 @@ namespace CompuScan_MES_Client
                     });
                 }
                 else skidID.Text = "Skid ID: " + palletNum;
-                return true;
             }
             else
             {
@@ -283,7 +283,6 @@ namespace CompuScan_MES_Client
                     skidID.Text = "Skid ID: -";
                     MessageBox.Show("Skid not found.", "Unknown Skid", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-                return false;
             }
         }
         #endregion

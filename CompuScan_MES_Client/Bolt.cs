@@ -50,6 +50,7 @@ namespace CompuScan_MES_Client
         private string 
             stationID,
             boltResult,
+            boltPartNum,
             entireSequence,
             FEMLabel;
 
@@ -302,6 +303,7 @@ namespace CompuScan_MES_Client
             subSequences = entireSequence.Split('-');
             currentSequence = subSequences[sequencePos].Split(',');
             maxNumAttempts = Int32.Parse(currentSequence[2]);
+            boltPartNum = currentSequence[3];
 
             for (int i = 0; i < boltNum; i++)
             {

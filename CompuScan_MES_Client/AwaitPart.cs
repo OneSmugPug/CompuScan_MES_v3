@@ -95,7 +95,7 @@ namespace CompuScan_MES_Client
                 transactClient.DBRead(3100, 0, transactReadBuffer.Length, transactReadBuffer);
                 readTransactionID = S7.GetByteAt(transactReadBuffer, 45);
 
-                S7.SetByteAt(transactWriteBuffer, 94, 0);
+                S7.SetByteAt(transactWriteBuffer, 94, 1);
                 transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
 
                 if (readTransactionID == 0 && !handshakeCleared)

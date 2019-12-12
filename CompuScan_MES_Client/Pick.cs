@@ -56,10 +56,13 @@ namespace CompuScan_MES_Client
         private Thread readTransact,
             handshakeThr;
 
-        private string[] 
+        private string[]
             subSequences,
-            currentSequence,
-            shortCodes;
+            currentSequence;
+
+        private List<string>
+            shortCodes,
+            partDescriptions;
 
         
 
@@ -247,8 +250,7 @@ namespace CompuScan_MES_Client
                                     //S7.SetByteAt(transactWriteBuffer, 45, 3); // Check what tr id to send back if no data was received
                                     S7.SetByteAt(transactWriteBuffer, 48, 99);
                                     int result2 = transactClient.DBWrite(3101, 0, transactWriteBuffer.Length, transactWriteBuffer);
-                                }
-
+                                } 
                                 Thread.Sleep(50);
                                 break;
                             case 100:
@@ -307,12 +309,17 @@ namespace CompuScan_MES_Client
         {
             subSequences = entireSequence.Split('-');
             currentSequence = subSequences[sequencePos].Split(',');
-            shortCodes = String.Join(" ", currentSequence[3].SplitIntoParts(3)).Split(' ');
-            maxNumAttempts = Int32.Parse(currentSequence[2]);
 
-            if (shortCodes.Length != pickNum)
+
+            for (int i = 2; i < currentSequence.Length; i++)
             {
-                Console.WriteLine("The number of picks do not equal the number of part numbers in the database");
+                shortCodes.Add(currentSequence[i].Substring(0,3));
+                partDescriptions.Add(currentSequence[i].Substring( 3));
+            }
+
+            if (shortCodes.Count != pickNum)
+            {
+                Console.WriteLine("SERVER SIDE PROBLEM\nThe number of picks do not equal the number of part numbers in the database");
                 return;
             }
 

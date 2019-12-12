@@ -122,6 +122,9 @@ namespace CompuScan_MES_Client
                                     curForm.Close();
 
                                 main_Panel.Controls.Clear();
+                                lbl_SkidID.Text = "Skid ID: -";
+                                txt_MP_SequenceNumber.Text = "";
+                                txt_MP_ValeoRef.Text = "";
                             });
                         }
                         else
@@ -130,11 +133,13 @@ namespace CompuScan_MES_Client
                                 curForm.Close();
 
                             main_Panel.Controls.Clear();
+                            lbl_SkidID.Text = "Skid ID: -";
+                            txt_MP_SequenceNumber.Text = "";
+                            txt_MP_ValeoRef.Text = "";
                         }
 
                         AwaitPart frmAwait = new AwaitPart(stationID);
                         frmAwait.Owner = this;
-                        frmAwait.SetLabel(lbl_SkidID);
 
                         curForm = frmAwait;
                         curForm.TopLevel = false;
@@ -229,7 +234,7 @@ namespace CompuScan_MES_Client
                         }
 
                         ScanFEM frmScanFEM = new ScanFEM(stationID, obj.GetSkidID());
-
+                        frmScanFEM.SetTxtBoxes(txt_MP_SequenceNumber,txt_MP_ValeoRef);
                         curForm = frmScanFEM;
                         curForm.TopLevel = false;
                         curForm.TopMost = true;

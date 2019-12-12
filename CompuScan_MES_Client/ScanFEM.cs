@@ -45,12 +45,14 @@ namespace CompuScan_MES_Client
             stationID,
             entireSequence,
             FEMLabel;
-            
 
         private string[] FEMLabelParts;
         private DataTable dt;
+        private MainPage parent = null;
+        private TextBox 
+            txt_seqNum,
+            txt_valRef;
         #endregion
-
 
         public ScanFEM(string stationID, int skidID)
         {
@@ -73,6 +75,7 @@ namespace CompuScan_MES_Client
                 handshakeThr.IsBackground = true;
                 handshakeThr.Start();
             }
+            parent = (MainPage)this.Owner;
         }
 
         #region [Establish Connection]
@@ -208,6 +211,7 @@ namespace CompuScan_MES_Client
                                   "\nTransaction ID : " + readTransactionID +
                                   "\nResult : Handshake done... Starting next screen." +
                                   "\n-------------------------");
+                            UpdateUISeqNum();
                             string[] nextStep = FEMLabelParts[0].Split(',');
                             hub.PublishAsync(new ScreenChangeObject(nextStep[0], nextStep[1], entireSequence, 0, skidID, FEMLabel));
                             this.Close();
@@ -220,7 +224,58 @@ namespace CompuScan_MES_Client
         }
         #endregion
 
-        
+        #region [Update Sequence Number & Valeo Ref on UI]
+        private void UpdateUISeqNum()
+        {
+            if (!FEMLabelParts[1].Equals("") && !FEMLabelParts[7].Equals(""))
+            {
+                if (txt_seqNum.IsHandleCreated && txt_valRef.IsHandleCreated && parent.IsHandleCreated)
+                {
+                    txt_seqNum.Invoke((MethodInvoker)delegate
+                    {
+                        txt_seqNum.Text = FEMLabelParts[1];
+                    });
+                    txt_valRef.Invoke((MethodInvoker)delegate
+                    {
+                        txt_valRef.Text = FEMLabelParts[7];
+                    });
+                }
+                else
+                {
+                    txt_seqNum.Text = FEMLabelParts[1];
+                    txt_valRef.Text = FEMLabelParts[7];
+                }
+            }
+            else
+            {
+                if (txt_seqNum.IsHandleCreated && txt_valRef.IsHandleCreated)
+                {
+                    txt_seqNum.Invoke((MethodInvoker)delegate
+                    {
+                        txt_seqNum.Text = "ERROR";
+                    });
+
+                    txt_valRef.Invoke((MethodInvoker)delegate
+                    {
+                        txt_valRef.Text = "ERROR";
+                    });
+                    MessageBox.Show("FEM Label not scanned correctly.", "Unknown FEM Label", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                else
+                {
+                    txt_seqNum.Text = "ERROR";
+                    txt_valRef.Text = "ERROR";
+                    MessageBox.Show("FEM Label not scanned correctly.", "Unknown FEM Label", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+        #endregion
+
+        public void SetTxtBoxes(TextBox txt_seqNum, TextBox txt_valRef)
+        {
+            this.txt_seqNum = txt_seqNum;
+            this.txt_valRef = txt_valRef;
+        }
 
         #region [PLC Getters/Setters]
         public string lineID { get; set; }
